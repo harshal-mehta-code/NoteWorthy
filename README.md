@@ -52,7 +52,9 @@ open prototype/index.html      # macOS
 xdg-open prototype/index.html  # Linux
 ```
 
-It covers: Home, the Degree ID ear drill (playable), Sight Reading, Vocal training with a live pitch ribbon, the Musicianship Map, and a Theory lesson card.
+The Degree ID ear drill actually plays and grades. Five more screens are mocked: Today, Scroll Reading, Sight-Singing with a pitch trace, the Musicianship Map, a Theory lesson, and the session summary. Both themes included.
+
+Rendered captures of every screen live in [`prototype/screens/`](prototype/screens). See [`prototype/README.md`](prototype/README.md) for what's real vs. mocked, and for the mapping from prototype shortcuts to real implementations — **the prototype is authoritative for look and feel, the docs are authoritative for behavior.**
 
 ## Planned stack
 
