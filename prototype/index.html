@@ -1,0 +1,1345 @@
+<meta charset="utf-8" />
+<title>NoteWorthy — Visual Prototype</title>
+
+<style>
+/* ============================================================
+   NoteWorthy prototype — design tokens
+   Mirrors docs/05-DESIGN-SYSTEM.md
+   ============================================================ */
+:root {
+  /* stage = the presentation backdrop, distinct from the app canvas */
+  --stage:          #07080A;
+  --stage-2:        #0E1013;
+  --stage-line:     #1C2026;
+
+  /* app tokens */
+  --nw-bg:          #0A0B0D;
+  --nw-surface-1:   #121417;
+  --nw-surface-2:   #1A1D21;
+  --nw-surface-3:   #24282D;
+  --nw-border:      #2A2F35;
+  --nw-border-str:  #3A4048;
+
+  --nw-text:        #F2F4F6;
+  --nw-text-muted:  #9BA3AD;
+  --nw-text-subtle: #646C76;
+
+  --nw-accent:      #E8B44A;
+  --nw-accent-hot:  #F5C761;
+  --nw-accent-dim:  #8A6B2C;
+  --nw-accent-wash: rgba(232,180,74,.12);
+
+  --nw-cool:        #4ECDC4;
+  --nw-cool-dim:    #2A7A75;
+
+  --nw-correct:     #5BC98B;
+  --nw-wrong:       #E5736B;
+  --nw-flat:        #6B9FE8;
+  --nw-sharp:       #E88F6B;
+
+  --p-ear:     #C77DFF;
+  --p-reading: #4ECDC4;
+  --p-theory:  #E8B44A;
+  --p-voice:   #FF9E6B;
+
+  --ink-staff: #F2F4F6;
+  --key-white: #E6E9EC;
+  --key-black: #14171A;
+
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --font-music: "Bravura", "Segoe UI Symbol", "Apple Symbols", "Noto Music", "Noto Sans Symbols2", serif;
+
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px;
+}
+
+/* "Paper" light theme — the app's real second theme, not an inversion */
+@media (prefers-color-scheme: light) {
+  :root {
+    --stage:        #EDEAE4;
+    --stage-2:      #F6F4F0;
+    --stage-line:   #DAD5CC;
+
+    --nw-bg:        #FAF9F7;
+    --nw-surface-1: #FFFFFF;
+    --nw-surface-2: #F2F0EC;
+    --nw-surface-3: #E7E4DE;
+    --nw-border:    #DFDBD3;
+    --nw-border-str:#C6C0B5;
+
+    --nw-text:        #1A1D21;
+    --nw-text-muted:  #5C636B;
+    --nw-text-subtle: #8A9099;
+
+    --nw-accent:      #A9761A;
+    --nw-accent-hot:  #C08A22;
+    --nw-accent-dim:  #D9BE86;
+    --nw-accent-wash: rgba(169,118,26,.10);
+
+    --nw-cool:        #1F8B83;
+    --nw-cool-dim:    #9CD4CF;
+
+    --nw-correct:     #2F8D57;
+    --nw-wrong:       #C0453C;
+    --nw-flat:        #3A6DBE;
+    --nw-sharp:       #C16234;
+
+    --p-ear:     #8B45C7;
+    --p-reading: #1F8B83;
+    --p-theory:  #A9761A;
+    --p-voice:   #C86A34;
+
+    --ink-staff: #1A1D21;
+    --key-white: #FFFFFF;
+    --key-black: #2B3036;
+  }
+}
+:root[data-theme="light"] {
+  --stage:#EDEAE4; --stage-2:#F6F4F0; --stage-line:#DAD5CC;
+  --nw-bg:#FAF9F7; --nw-surface-1:#FFFFFF; --nw-surface-2:#F2F0EC; --nw-surface-3:#E7E4DE;
+  --nw-border:#DFDBD3; --nw-border-str:#C6C0B5;
+  --nw-text:#1A1D21; --nw-text-muted:#5C636B; --nw-text-subtle:#8A9099;
+  --nw-accent:#A9761A; --nw-accent-hot:#C08A22; --nw-accent-dim:#D9BE86; --nw-accent-wash:rgba(169,118,26,.10);
+  --nw-cool:#1F8B83; --nw-cool-dim:#9CD4CF;
+  --nw-correct:#2F8D57; --nw-wrong:#C0453C; --nw-flat:#3A6DBE; --nw-sharp:#C16234;
+  --p-ear:#8B45C7; --p-reading:#1F8B83; --p-theory:#A9761A; --p-voice:#C86A34;
+  --ink-staff:#1A1D21; --key-white:#FFFFFF; --key-black:#2B3036;
+}
+:root[data-theme="dark"] {
+  --stage:#07080A; --stage-2:#0E1013; --stage-line:#1C2026;
+  --nw-bg:#0A0B0D; --nw-surface-1:#121417; --nw-surface-2:#1A1D21; --nw-surface-3:#24282D;
+  --nw-border:#2A2F35; --nw-border-str:#3A4048;
+  --nw-text:#F2F4F6; --nw-text-muted:#9BA3AD; --nw-text-subtle:#646C76;
+  --nw-accent:#E8B44A; --nw-accent-hot:#F5C761; --nw-accent-dim:#8A6B2C; --nw-accent-wash:rgba(232,180,74,.12);
+  --nw-cool:#4ECDC4; --nw-cool-dim:#2A7A75;
+  --nw-correct:#5BC98B; --nw-wrong:#E5736B; --nw-flat:#6B9FE8; --nw-sharp:#E88F6B;
+  --p-ear:#C77DFF; --p-reading:#4ECDC4; --p-theory:#E8B44A; --p-voice:#FF9E6B;
+  --ink-staff:#F2F4F6; --key-white:#E6E9EC; --key-black:#14171A;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--stage);
+  color: var(--nw-text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- typography ---------- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--nw-accent);
+  margin: 0;
+}
+.eyebrow.cool { color: var(--nw-cool); }
+h1 {
+  font-size: clamp(40px, 7vw, 76px);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: .95;
+  margin: 18px 0 0;
+  text-wrap: balance;
+}
+h2 {
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+h3 { font-size: 17px; font-weight: 650; letter-spacing: -.01em; margin: 0; }
+p { margin: 0; }
+.lede { font-size: clamp(17px, 1.7vw, 20px); color: var(--nw-text-muted); max-width: 60ch; }
+.small { font-size: 14px; color: var(--nw-text-muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.brass { color: var(--nw-accent); }
+
+/* ---------- page header ---------- */
+header.top {
+  border-bottom: 1px solid var(--stage-line);
+  background: linear-gradient(180deg, var(--stage-2), var(--stage));
+}
+.top-inner { padding: 64px 0 72px; display: grid; gap: 28px; }
+.wordmark { display: flex; align-items: center; gap: 12px; }
+.wordmark .glyph {
+  font-family: var(--font-music);
+  font-size: 30px;
+  color: var(--nw-accent);
+  line-height: 1;
+}
+.wordmark .name {
+  font-size: 19px; font-weight: 700; letter-spacing: -.02em;
+}
+.meta-row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.tag {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--nw-text-muted);
+  border: 1px solid var(--nw-border); border-radius: 999px;
+  padding: 5px 11px;
+}
+.tag.on { color: var(--nw-accent); border-color: var(--nw-accent-dim); background: var(--nw-accent-wash); }
+
+.theme-btn {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  background: var(--nw-surface-2); color: var(--nw-text-muted);
+  border: 1px solid var(--nw-border); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer;
+}
+.theme-btn:hover { color: var(--nw-text); border-color: var(--nw-border-str); }
+
+/* ---------- sections ---------- */
+section { padding: 88px 0; border-bottom: 1px solid var(--stage-line); }
+.sec-head { display: grid; gap: 14px; max-width: 66ch; margin-bottom: 44px; }
+
+/* ---------- phone frame ---------- */
+.phone {
+  width: 320px;
+  flex: none;
+  border-radius: 42px;
+  padding: 10px;
+  background: linear-gradient(160deg, var(--nw-surface-3), var(--nw-surface-1));
+  border: 1px solid var(--nw-border-str);
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.02) inset;
+}
+.screen {
+  border-radius: 33px;
+  background: var(--nw-bg);
+  height: 660px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.screen.short { height: 660px; }
+
+/* status bar */
+.statusbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px 4px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--nw-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* drill chrome */
+.drill-top {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 20px 0;
+}
+.xbtn {
+  width: 30px; height: 30px; border-radius: 999px;
+  border: 1px solid var(--nw-border); background: transparent;
+  color: var(--nw-text-muted); cursor: pointer;
+  font-size: 15px; line-height: 1; display: grid; place-items: center;
+}
+.dots { display: flex; gap: 6px; margin-left: auto; }
+.dot { width: 6px; height: 6px; border-radius: 999px; background: var(--nw-surface-3); }
+.dot.done { background: var(--nw-accent); }
+.dot.now { background: var(--nw-accent); box-shadow: 0 0 0 3px var(--nw-accent-wash); }
+
+.screen-body { flex: 1; display: flex; flex-direction: column; padding: 0 20px 20px; min-height: 0; }
+
+/* ---------- degree drill ---------- */
+.stimulus {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; text-align: center;
+}
+.key-chip {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--nw-accent); background: var(--nw-accent-wash);
+  border: 1px solid var(--nw-accent-dim); border-radius: 999px; padding: 5px 12px;
+}
+.orb {
+  width: 128px; height: 128px; border-radius: 999px;
+  border: 1px solid var(--nw-border);
+  background: radial-gradient(circle at 50% 40%, var(--nw-surface-2), var(--nw-surface-1));
+  display: grid; place-items: center; cursor: pointer;
+  transition: transform 160ms cubic-bezier(.16,1,.3,1), border-color 160ms, box-shadow 240ms;
+  position: relative;
+}
+.orb:hover { border-color: var(--nw-accent-dim); }
+.orb .icon { font-size: 34px; color: var(--nw-accent); line-height: 1; }
+.orb.ringing { box-shadow: 0 0 0 0 var(--nw-accent-wash); animation: ring 1.1s cubic-bezier(.16,1,.3,1) infinite; }
+@keyframes ring {
+  0%   { box-shadow: 0 0 0 0 rgba(232,180,74,.30); }
+  100% { box-shadow: 0 0 0 34px rgba(232,180,74,0); }
+}
+.orb.good { animation: pulseGood 420ms cubic-bezier(.16,1,.3,1); border-color: var(--nw-correct); }
+@keyframes pulseGood { 0%{transform:scale(1)} 35%{transform:scale(1.06)} 100%{transform:scale(1)} }
+.orb.bad { animation: shake 220ms ease-in-out; border-color: var(--nw-wrong); }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+.prompt { font-size: 15px; color: var(--nw-text-muted); max-width: 24ch; }
+.verdict { min-height: 46px; display: grid; place-items: center; gap: 3px; }
+.verdict .big { font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+.verdict .sub { font-family: var(--font-mono); font-size: 11px; color: var(--nw-text-subtle); letter-spacing: .06em; }
+
+.degrees { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.deg {
+  background: var(--nw-surface-1); border: 1px solid var(--nw-border);
+  border-radius: var(--r-md); padding: 11px 0 9px; cursor: pointer;
+  display: grid; gap: 1px; justify-items: center;
+  transition: background 140ms, border-color 140ms, transform 140ms;
+  color: var(--nw-text);
+}
+.deg:hover:not(:disabled) { background: var(--nw-surface-2); border-color: var(--nw-border-str); }
+.deg:active:not(:disabled) { transform: scale(.96); }
+.deg:disabled { opacity: .45; cursor: default; }
+.deg .n { font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+.deg .s { font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; color: var(--nw-text-subtle); text-transform: uppercase; }
+.deg.is-right { background: rgba(91,201,139,.16); border-color: var(--nw-correct); }
+.deg.is-right .n, .deg.is-right .s { color: var(--nw-correct); }
+.deg.is-wrong { background: rgba(229,115,107,.14); border-color: var(--nw-wrong); }
+.deg.is-wrong .n, .deg.is-wrong .s { color: var(--nw-wrong); }
+
+.drill-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--nw-text-subtle); letter-spacing: .06em;
+}
+.linkbtn {
+  background: none; border: none; color: var(--nw-text-subtle); cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; padding: 4px 0;
+}
+.linkbtn:hover { color: var(--nw-accent); }
+.combo { color: var(--nw-accent); }
+
+/* ---------- generic app UI bits ---------- */
+.app-head { padding: 6px 20px 14px; display: grid; gap: 3px; }
+.app-head .h { font-size: 25px; font-weight: 750; letter-spacing: -.035em; }
+.app-head .s { font-size: 13px; color: var(--nw-text-subtle); }
+
+.card {
+  background: var(--nw-surface-1); border: 1px solid var(--nw-border);
+  border-radius: var(--r-lg); padding: 15px;
+}
+.card + .card { margin-top: 10px; }
+.card.hero {
+  background: linear-gradient(150deg, var(--nw-accent-wash), transparent 62%), var(--nw-surface-1);
+  border-color: var(--nw-accent-dim);
+}
+.row { display: flex; align-items: center; gap: 12px; }
+.grow { flex: 1; min-width: 0; }
+.pill {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--nw-border); color: var(--nw-text-subtle);
+}
+.pill.ear { color: var(--p-ear); border-color: color-mix(in srgb, var(--p-ear) 45%, transparent); }
+.pill.read { color: var(--p-reading); border-color: color-mix(in srgb, var(--p-reading) 45%, transparent); }
+.pill.voice { color: var(--p-voice); border-color: color-mix(in srgb, var(--p-voice) 45%, transparent); }
+.pill.theory { color: var(--p-theory); border-color: color-mix(in srgb, var(--p-theory) 45%, transparent); }
+
+.bar { height: 5px; border-radius: 999px; background: var(--nw-surface-3); overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 999px; background: var(--nw-accent); }
+
+.btn-primary {
+  width: 100%; border: none; border-radius: var(--r-md); cursor: pointer;
+  background: var(--nw-accent); color: #16130A;
+  font-family: var(--font-ui); font-size: 15px; font-weight: 700; letter-spacing: -.01em;
+  padding: 13px 0;
+}
+:root[data-theme="light"] .btn-primary { color: #FFF8EA; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .btn-primary { color: #FFF8EA; } }
+
+.tabbar {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--nw-border); padding: 9px 0 14px; margin-top: auto;
+}
+.tabbar div {
+  display: grid; justify-items: center; gap: 3px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--nw-text-subtle);
+}
+.tabbar div.on { color: var(--nw-accent); }
+.tabbar .ic { font-size: 15px; line-height: 1; }
+
+/* ---------- staff ---------- */
+.staffwrap { background: var(--nw-surface-1); border: 1px solid var(--nw-border); border-radius: var(--r-lg); padding: 14px 0; overflow: hidden; }
+
+/* ---------- gallery ---------- */
+.gallery {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 320px));
+  gap: 52px 40px; justify-content: center;
+}
+.shot { display: grid; gap: 18px; justify-items: start; }
+.shot .cap { display: grid; gap: 6px; max-width: 34ch; }
+.shot .cap .k {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--nw-cool);
+}
+.shot .cap p { font-size: 13.5px; color: var(--nw-text-muted); line-height: 1.55; }
+
+/* ---------- hero split ---------- */
+.split { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 64px; align-items: center; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; justify-items: center; } .split .copy { order: 2; } }
+.copy { display: grid; gap: 22px; max-width: 46ch; }
+.steps { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; font-size: 14.5px; color: var(--nw-text-muted); }
+.steps .num {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: .05em;
+  color: var(--nw-accent); border: 1px solid var(--nw-accent-dim); border-radius: 999px;
+  width: 22px; height: 22px; display: grid; place-items: center; margin-top: 1px;
+}
+.steps b { color: var(--nw-text); font-weight: 620; }
+
+.note-strip {
+  border-left: 2px solid var(--nw-accent-dim); padding: 2px 0 2px 16px;
+  font-size: 14px; color: var(--nw-text-muted);
+}
+
+/* ---------- feedback list ---------- */
+.qs { display: grid; gap: 1px; background: var(--stage-line); border: 1px solid var(--stage-line); border-radius: var(--r-lg); overflow: hidden; }
+.q { background: var(--stage-2); padding: 20px 22px; display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start; }
+.q .idx { font-family: var(--font-mono); font-size: 11px; color: var(--nw-accent); letter-spacing: .08em; padding-top: 3px; }
+.q .body { display: grid; gap: 5px; }
+.q h3 { font-size: 15.5px; }
+.q p { font-size: 14px; color: var(--nw-text-muted); }
+
+footer { padding: 56px 0 80px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+</style>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="meta-row">
+      <div class="wordmark">
+        <span class="glyph">&#119070;</span>
+        <span class="name">NoteWorthy</span>
+      </div>
+      <span class="tag">Prototype v0.1</span>
+      <button class="theme-btn" id="themeBtn" type="button">Paper theme</button>
+    </div>
+
+    <div>
+      <p class="eyebrow">Ear &middot; Eye &middot; Mind &middot; Voice</p>
+      <h1>One app that turns<br />hearing into knowing.</h1>
+    </div>
+
+    <p class="lede">
+      Sight reading, ear training, theory and voice trained as <em>one</em> connected skill —
+      in one key, with a feedback loop tight enough to be addictive. Free, offline, installable.
+    </p>
+
+    <div class="meta-row">
+      <span class="tag on">Key of the week &middot; G major</span>
+      <span class="tag">Functional-first ear training</span>
+      <span class="tag">FSRS scheduling</span>
+      <span class="tag">PWA</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ PLAYABLE ============ -->
+<section>
+  <div class="wrap split">
+    <div class="copy">
+      <p class="eyebrow">Playable &mdash; turn your sound on</p>
+      <h2>The backbone drill, working.</h2>
+      <p class="small" style="font-size:15px;color:var(--nw-text-muted)">
+        This is <b style="color:var(--nw-text)">Degree ID</b> — the drill everything else is built on.
+        Not "name that interval" in a vacuum: a cadence puts you in a key, then one note sounds, and you say
+        what it <em>is</em> in that key. That's the skill that actually transfers to real music.
+      </p>
+      <ul class="steps">
+        <li><span class="num">1</span><span><b>A cadence establishes G major.</b> Voicing and instrument randomize, so you key off the tonality — not a memorized sound.</span></li>
+        <li><span class="num">2</span><span><b>One note sounds.</b> Tap the scale degree you heard. Keyboard <span class="mono">1</span>–<span class="mono">7</span> works too.</span></li>
+        <li><span class="num">3</span><span><b>Feedback is musical.</b> Right: the note resolves to tonic. Wrong: you hear <em>your</em> answer, then the real one, back to back.</span></li>
+        <li><span class="num">4</span><span><b>The combo rises in pitch.</b> Three in a row and the confirmation climbs the scale — a hot streak literally sounds like an arpeggio.</span></li>
+      </ul>
+      <p class="note-strip">
+        Prototype audio is a simple synth. The real app uses sampled piano with a synth fallback,
+        so it always makes sound — even offline before samples cache.
+      </p>
+    </div>
+
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+        <div class="drill-top">
+          <button class="xbtn" type="button" aria-label="Exit drill">&times;</button>
+          <div class="dots" id="dots"></div>
+        </div>
+        <div class="screen-body">
+          <div class="stimulus">
+            <span class="key-chip" id="keyChip">Key of G major</span>
+            <button class="orb" id="orb" type="button" aria-label="Play the note">
+              <span class="icon" id="orbIcon">&#9835;</span>
+            </button>
+            <p class="prompt" id="prompt">Tap to hear the cadence, then the note.</p>
+            <div class="verdict" id="verdict"></div>
+          </div>
+
+          <div class="degrees" id="degrees"></div>
+
+          <div class="drill-foot">
+            <button class="linkbtn" id="replayBtn" type="button">&#8635; Replay &times;0.9</button>
+            <span class="combo mono" id="combo">&mdash;</span>
+            <button class="linkbtn" id="hintBtn" type="button">&#9432; Hint</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GALLERY ============ -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow cool">The rest of the app</p>
+      <h2>Six screens, one language.</h2>
+      <p class="lede" style="font-size:16px">
+        Same tokens, same restraint. Drill screens carry no chrome at all — the exercise
+        gets the whole display, and everything else waits between reps.
+      </p>
+    </div>
+
+    <div class="gallery">
+
+      <!-- TODAY -->
+      <div class="shot">
+        <div class="phone">
+          <div class="screen short">
+            <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+            <div class="app-head">
+              <div class="h">Good evening</div>
+              <div class="s">Day 34 &middot; G major week</div>
+            </div>
+            <div class="screen-body" style="gap:10px">
+              <div class="card hero">
+                <div class="row" style="margin-bottom:10px">
+                  <div class="grow">
+                    <h3>Daily Warm-Up</h3>
+                    <div class="small mono" style="font-size:11px;letter-spacing:.08em">5 MIN &middot; 4 PILLARS &middot; INTERLEAVED</div>
+                  </div>
+                  <span class="mono" style="font-size:26px;font-weight:700;color:var(--nw-accent)">34</span>
+                </div>
+                <button class="btn-primary" type="button">Start</button>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="card" style="padding:12px">
+                  <div class="row" style="margin-bottom:8px">
+                    <span class="pill ear">Ear</span><div class="grow"></div>
+                    <span class="mono small" style="font-size:10px">12 due</span>
+                  </div>
+                  <h3 style="font-size:14px;margin-bottom:7px;line-height:1.25">Degree ID<br />chromatics</h3>
+                  <div class="bar"><i style="width:64%;background:var(--p-ear)"></i></div>
+                </div>
+                <div class="card" style="padding:12px">
+                  <div class="row" style="margin-bottom:8px">
+                    <span class="pill voice">Voice</span><div class="grow"></div>
+                    <span class="mono small" style="font-size:10px">new</span>
+                  </div>
+                  <h3 style="font-size:14px;margin-bottom:7px;line-height:1.25">Agility<br />seq. thirds</h3>
+                  <div class="bar"><i style="width:12%;background:var(--p-voice)"></i></div>
+                </div>
+              </div>
+
+              <div class="card" style="border-style:dashed">
+                <div class="row">
+                  <span style="font-family:var(--font-music);font-size:19px;color:var(--nw-cool)">&#9834;</span>
+                  <div class="grow">
+                    <h3 style="font-size:14px">Full Circle unlocked</h3>
+                    <div class="small" style="font-size:12px">Hear &rarr; sing &rarr; notate &rarr; read &rarr; play</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" style="padding:13px 15px;margin-top:auto">
+                <div class="row" style="margin-bottom:9px">
+                  <div class="small mono" style="font-size:10px;letter-spacing:.12em">KEY OF THE WEEK</div>
+                  <div class="grow"></div>
+                  <div class="small mono" style="font-size:10px;letter-spacing:.12em">WEEK 4 / 12</div>
+                </div>
+                <div class="row" style="gap:7px">
+                  <span class="key-chip" style="padding:4px 9px;font-size:9px">C</span>
+                  <span class="key-chip" style="padding:4px 9px;font-size:9px">F</span>
+                  <span class="key-chip" style="padding:4px 9px;font-size:9px">B&#9837;</span>
+                  <span class="key-chip" style="padding:4px 10px;font-size:11px;background:var(--nw-accent);color:var(--nw-bg);border-color:var(--nw-accent);font-weight:700">G</span>
+                  <span class="key-chip" style="padding:4px 9px;font-size:9px;opacity:.4">D</span>
+                  <span class="key-chip" style="padding:4px 9px;font-size:9px;opacity:.4">A</span>
+                </div>
+              </div>
+              <div class="tabbar">
+                <div class="on"><span class="ic">&#9670;</span>Today</div>
+                <div><span class="ic">&#9654;</span>Practice</div>
+                <div><span class="ic">&#10022;</span>Map</div>
+                <div><span class="ic">&#9673;</span>You</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="k">Today</div>
+          <p>One obvious next action. The Warm-Up is assembled fresh each day by the scheduler — never the same session twice, always interleaved across all four pillars.</p>
+        </div>
+      </div>
+
+      <!-- SCROLL READING -->
+      <div class="shot">
+        <div class="phone">
+          <div class="screen short">
+            <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+            <div class="drill-top">
+              <button class="xbtn" type="button" aria-label="Exit">&times;</button>
+              <div class="dots"><span class="dot done"></span><span class="dot done"></span><span class="dot now"></span><span class="dot"></span><span class="dot"></span></div>
+            </div>
+            <div class="screen-body">
+              <div class="stimulus" style="gap:16px">
+                <span class="key-chip" style="color:var(--p-reading);border-color:var(--p-reading);background:rgba(78,205,196,.10)">Scroll reading &middot; &#9833;=72</span>
+                <div class="staffwrap" style="width:100%" id="scrollStaff"></div>
+                <p class="prompt" style="font-size:13px">Sing or play as it passes the line. It never stops, and it never repeats.</p>
+              </div>
+              <div class="card" style="padding:11px 14px">
+                <div class="row">
+                  <div class="grow">
+                    <div class="small mono" style="font-size:10px;letter-spacing:.1em">LOOKAHEAD</div>
+                    <div class="mono" style="font-size:17px;font-weight:700">1.4 <span style="font-size:11px;color:var(--nw-text-subtle)">beats</span></div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small mono" style="font-size:10px;letter-spacing:.1em">ACCURACY</div>
+                    <div class="mono" style="font-size:17px;font-weight:700;color:var(--nw-correct)">91%</div>
+                  </div>
+                </div>
+              </div>
+              <div class="drill-foot"><span>NO STOPPING</span><span class="mono">BAR 3 / 8</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="k">Sight reading</div>
+          <p>Notes behind the playhead fade out, so your eyes are forced forward. Regression is physically impossible — which is exactly what fixes bad readers.</p>
+        </div>
+      </div>
+
+      <!-- VOCAL -->
+      <div class="shot">
+        <div class="phone">
+          <div class="screen short">
+            <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+            <div class="drill-top">
+              <button class="xbtn" type="button" aria-label="Exit">&times;</button>
+              <div class="dots"><span class="dot done"></span><span class="dot now"></span><span class="dot"></span><span class="dot"></span></div>
+            </div>
+            <div class="screen-body">
+              <div class="stimulus" style="gap:14px">
+                <span class="key-chip" style="color:var(--p-voice);border-color:var(--p-voice);background:rgba(255,158,107,.10)">Sight-singing &middot; your range</span>
+                <div class="staffwrap" style="width:100%" id="traceStaff"></div>
+                <div class="row" style="gap:22px">
+                  <div style="text-align:center">
+                    <div class="mono" style="font-size:30px;font-weight:700;letter-spacing:-.03em">&minus;7<span style="font-size:14px;color:var(--nw-text-subtle)">&cent;</span></div>
+                    <div class="small mono" style="font-size:9px;letter-spacing:.12em">DEVIATION</div>
+                  </div>
+                  <div style="text-align:center">
+                    <div class="mono" style="font-size:30px;font-weight:700;letter-spacing:-.03em;color:var(--nw-correct)">B4</div>
+                    <div class="small mono" style="font-size:9px;letter-spacing:.12em">DETECTED</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card" style="padding:11px 14px">
+                <div class="row" style="gap:10px">
+                  <span class="pill" style="color:var(--nw-correct);border-color:var(--nw-correct)">Centered 6</span>
+                  <span class="pill" style="color:var(--nw-flat);border-color:var(--nw-flat)">Flat 2</span>
+                  <span class="pill" style="color:var(--nw-sharp);border-color:var(--nw-sharp)">Sharp 1</span>
+                </div>
+              </div>
+              <div class="drill-foot"><span>&#9679; LIVE</span><span class="mono">RECOVERY 240 MS</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="k">Vocal</div>
+          <p>Your live pitch drawn straight over the notation, shaded by how far off you are. It reads instantly — and it's the screenshot that sells the app.</p>
+        </div>
+      </div>
+
+      <!-- MAP -->
+      <div class="shot">
+        <div class="phone">
+          <div class="screen short">
+            <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+            <div class="app-head">
+              <div class="h">Musicianship Map</div>
+              <div class="s">18 of 84 nodes mastered</div>
+            </div>
+            <div class="screen-body" style="gap:10px">
+              <div style="flex:1;border:1px solid var(--nw-border);border-radius:var(--r-lg);background:var(--nw-surface-1);overflow:hidden" id="mapBox"></div>
+              <div class="card" style="padding:12px 14px">
+                <div class="row" style="margin-bottom:7px">
+                  <span class="pill ear">Ear</span>
+                  <div class="grow"></div>
+                  <span class="mono small" style="font-size:10px;color:var(--nw-warn,var(--nw-accent))">NEEDS REVIEW</span>
+                </div>
+                <h3 style="margin-bottom:4px">Chord inversions &middot; minor</h3>
+                <div class="small" style="font-size:12px">Retention 61% and falling. Two minutes fixes it.</div>
+              </div>
+              <div class="tabbar">
+                <div><span class="ic">&#9670;</span>Today</div>
+                <div><span class="ic">&#9654;</span>Practice</div>
+                <div class="on"><span class="ic">&#10022;</span>Map</div>
+                <div><span class="ic">&#9673;</span>You</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="k">Progression</div>
+          <p>Not a lesson list — a constellation with real prerequisite edges. Nodes visibly dim as your retention decays, which pulls you back without a single guilt notification.</p>
+        </div>
+      </div>
+
+      <!-- THEORY -->
+      <div class="shot">
+        <div class="phone">
+          <div class="screen short">
+            <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+            <div class="drill-top">
+              <button class="xbtn" type="button" aria-label="Exit">&times;</button>
+              <div class="dots"><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot now"></span></div>
+            </div>
+            <div class="screen-body" style="gap:12px">
+              <div style="padding-top:6px">
+                <span class="pill theory">Theory &middot; Harmony</span>
+                <h3 style="font-size:22px;letter-spacing:-.03em;margin-top:10px">Why V wants to become I</h3>
+              </div>
+              <p class="small" style="font-size:13.5px;line-height:1.6">
+                The dominant seventh holds a tritone — <b style="color:var(--nw-text)">F&#9838;</b> against
+                <b style="color:var(--nw-text)">B</b>. It's unstable, and both notes lean. Play it and hear the pull.
+              </p>
+              <div class="card" style="padding:12px" id="kbCard">
+                <div id="miniKeys"></div>
+                <div class="row" style="margin-top:10px;gap:8px">
+                  <span class="pill" style="color:var(--nw-accent);border-color:var(--nw-accent-dim)">D7</span>
+                  <span style="color:var(--nw-text-subtle)">&rarr;</span>
+                  <span class="pill" style="color:var(--nw-correct);border-color:var(--nw-correct)">G</span>
+                  <div class="grow"></div>
+                  <span class="small mono" style="font-size:10px;letter-spacing:.08em">TAP TO HEAR</span>
+                </div>
+              </div>
+              <div class="card" style="border-color:var(--nw-accent-dim);background:var(--nw-accent-wash)">
+                <div class="small mono" style="font-size:10px;letter-spacing:.12em;color:var(--nw-accent);margin-bottom:6px">NEXT, IN YOUR EAR</div>
+                <div style="font-size:13.5px">You'll hear this cadence in tonight's Warm-Up, then sing the 7&rarr;1 resolution.</div>
+              </div>
+              <button class="btn-primary" type="button" style="margin-top:auto">Got it</button>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="k">Theory</div>
+          <p>Never more than three screens before a question, and every concept is bound to an ear, reading and vocal drill within days. That link is what stops theory being trivia.</p>
+        </div>
+      </div>
+
+      <!-- SUMMARY -->
+      <div class="shot">
+        <div class="phone">
+          <div class="screen short">
+            <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679;&#9679;</span></div>
+            <div class="screen-body" style="gap:12px;padding-top:26px">
+              <div style="text-align:center;display:grid;gap:5px">
+                <div style="font-family:var(--font-music);font-size:30px;color:var(--nw-accent)">&#9835;</div>
+                <div style="font-size:27px;font-weight:750;letter-spacing:-.035em">Warm-Up done</div>
+                <div class="small mono" style="font-size:11px;letter-spacing:.1em">5:12 &middot; 34 ITEMS &middot; 4 PILLARS</div>
+              </div>
+
+              <div class="card" style="margin-top:6px">
+                <div class="row" style="gap:0">
+                  <div class="grow" style="text-align:center">
+                    <div class="mono" style="font-size:23px;font-weight:700;color:var(--nw-correct)">87%</div>
+                    <div class="small mono" style="font-size:9px;letter-spacing:.1em">ACCURACY</div>
+                  </div>
+                  <div class="grow" style="text-align:center;border-left:1px solid var(--nw-border);border-right:1px solid var(--nw-border)">
+                    <div class="mono" style="font-size:23px;font-weight:700;color:var(--nw-accent)">+310</div>
+                    <div class="small mono" style="font-size:9px;letter-spacing:.1em">XP</div>
+                  </div>
+                  <div class="grow" style="text-align:center">
+                    <div class="mono" style="font-size:23px;font-weight:700">&times;12</div>
+                    <div class="small mono" style="font-size:9px;letter-spacing:.1em">BEST COMBO</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" style="border-color:var(--nw-cool-dim)">
+                <div class="small mono" style="font-size:10px;letter-spacing:.12em;color:var(--nw-cool);margin-bottom:7px">ONE THING WORTH KNOWING</div>
+                <div style="font-size:14.5px;line-height:1.55">
+                  Your <b>descending</b> sixths are 30% slower than your ascending ones. Same accuracy — just slower to commit.
+                </div>
+              </div>
+
+              <div class="card" style="padding:12px 15px">
+                <div class="row">
+                  <span style="font-family:var(--font-music);font-size:17px;color:var(--nw-accent)">&#9834;</span>
+                  <div class="grow" style="font-size:13.5px">Progression dictation moved to <b>Proficient</b></div>
+                </div>
+              </div>
+
+              <button class="btn-primary" type="button" style="margin-top:auto">Keep going</button>
+              <button class="linkbtn" type="button" style="justify-self:center">Done for today</button>
+            </div>
+          </div>
+        </div>
+        <div class="cap">
+          <div class="k">Session summary</div>
+          <p>Exactly one specific observation, never a wall of stats. Specific beats comprehensive — and it's the thing people screenshot.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEEDBACK ============ -->
+<section style="border-bottom:none">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Over to you</p>
+      <h2>What I'd like decided before we build.</h2>
+      <p class="lede" style="font-size:16px">
+        Everything above is documented in <span class="mono brass">/docs</span>, broken into work packages
+        that can run as parallel sessions. These five are the calls that change what gets built.
+      </p>
+    </div>
+
+    <div class="qs">
+      <div class="q">
+        <div class="idx">01</div>
+        <div class="body">
+          <h3>Is the drill loop fun?</h3>
+          <p>Play the Degree ID drill above a dozen times. If the 2-second micro loop isn't satisfying on its own, no amount of map and streaks will save it — and that's the thing to fix first.</p>
+        </div>
+      </div>
+      <div class="q">
+        <div class="idx">02</div>
+        <div class="body">
+          <h3>Brass on near-black, or something else?</h3>
+          <p>The accent is instrument-lacquer gold with a teal for anything live. Hit the theme button to see "Paper", the light theme — some readers strongly prefer black notation on white.</p>
+        </div>
+      </div>
+      <div class="q">
+        <div class="idx">03</div>
+        <div class="body">
+          <h3>Numbers or solfège by default?</h3>
+          <p>Degrees can read <span class="mono">1&ndash;7</span> or <span class="mono">Do Re Mi</span>. Both ship as a setting — the question is which one a new user meets first, and whether minor is la-based or do-based.</p>
+        </div>
+      </div>
+      <div class="q">
+        <div class="idx">04</div>
+        <div class="body">
+          <h3>Anonymous forever, or accounts?</h3>
+          <p>Local-first means no signup and instant start, but clearing browser data loses progress. JSON export covers it — is that enough, or do we want sync sooner than Phase 5?</p>
+        </div>
+      </div>
+      <div class="q">
+        <div class="idx">05</div>
+        <div class="body">
+          <h3>First milestone scope.</h3>
+          <p>My proposal: an installable, offline functional ear trainer with spaced repetition — Degree ID only — before touching the other three pillars. It validates the loop cheaply and is already better than most of the market.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p class="small mono" style="font-size:11px;letter-spacing:.1em;color:var(--nw-text-subtle)">
+      NOTEWORTHY &middot; PROTOTYPE &middot; NO BUILD STEP &middot; NO NETWORK &middot; SOUND IS SYNTHESIZED LIVE
+    </p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- theme ---------------- */
+  var root = document.documentElement;
+  var themeBtn = document.getElementById("themeBtn");
+  function currentTheme() {
+    var set = root.getAttribute("data-theme");
+    if (set) return set;
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  function syncBtn() {
+    themeBtn.textContent = currentTheme() === "dark" ? "Paper theme" : "Midnight theme";
+  }
+  themeBtn.addEventListener("click", function () {
+    root.setAttribute("data-theme", currentTheme() === "dark" ? "light" : "dark");
+    syncBtn();
+    drawAll();
+  });
+  syncBtn();
+
+  /* ---------------- audio ---------------- */
+  var ac = null;
+  function audio() {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === "suspended") ac.resume();
+    return ac;
+  }
+  // warm two-oscillator voice with a gentle envelope
+  function voice(midi, at, dur, level) {
+    var c = audio();
+    var f = 440 * Math.pow(2, (midi - 69) / 12);
+    var g = c.createGain();
+    var lp = c.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.setValueAtTime(Math.min(7000, f * 7), at);
+    lp.Q.value = 0.6;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(level, at + 0.012);
+    g.gain.exponentialRampToValueAtTime(level * 0.35, at + Math.min(0.28, dur * 0.5));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    [0, 1].forEach(function (i) {
+      var o = c.createOscillator();
+      o.type = i ? "sine" : "triangle";
+      o.frequency.value = f;
+      o.detune.value = i ? 5 : -5;
+      o.connect(lp);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    });
+    lp.connect(g);
+    g.connect(c.destination);
+  }
+  function chord(midis, at, dur, level) {
+    midis.forEach(function (m) { voice(m, at, dur, level / Math.sqrt(midis.length)); });
+  }
+
+  /* ---------------- music ---------------- */
+  var TONIC = 55;                      // G3
+  var SCALE = [0, 2, 4, 5, 7, 9, 11];  // major
+  var SOLFA = ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"];
+  function degMidi(d) { return TONIC + 12 + SCALE[d - 1]; }  // sing in the G4 octave
+
+  function playCadence(t0) {
+    var c = audio(), t = t0 === undefined ? c.currentTime + 0.05 : t0;
+    var I  = [TONIC, TONIC + 7, TONIC + 12, TONIC + 16];
+    var IV = [TONIC + 5, TONIC + 12, TONIC + 17, TONIC + 21];
+    var V  = [TONIC + 2, TONIC + 11, TONIC + 18, TONIC + 21];
+    chord(I,  t + 0.00, 0.42, 0.16);
+    chord(IV, t + 0.42, 0.42, 0.16);
+    chord(V,  t + 0.84, 0.42, 0.16);
+    chord(I,  t + 1.26, 0.62, 0.16);
+    return t + 1.95;
+  }
+  function playDegree(d, at, dur) {
+    voice(degMidi(d), at, dur || 0.95, 0.26);
+  }
+
+  /* ---------------- degree drill ---------------- */
+  var target = null, locked = true, answered = false, streak = 0, best = 0, idx = 0, total = 5;
+
+  var orb = document.getElementById("orb"),
+      orbIcon = document.getElementById("orbIcon"),
+      promptEl = document.getElementById("prompt"),
+      verdict = document.getElementById("verdict"),
+      degWrap = document.getElementById("degrees"),
+      comboEl = document.getElementById("combo"),
+      dotsEl = document.getElementById("dots");
+
+  for (var d = 1; d <= 7; d++) {
+    var b = document.createElement("button");
+    b.className = "deg";
+    b.type = "button";
+    b.dataset.deg = String(d);
+    b.disabled = true;
+    b.innerHTML = '<span class="n">' + d + '</span><span class="s">' + SOLFA[d - 1] + "</span>";
+    degWrap.appendChild(b);
+  }
+  var skip = document.createElement("button");
+  skip.className = "deg";
+  skip.type = "button";
+  skip.disabled = true;
+  skip.dataset.deg = "0";
+  skip.innerHTML = '<span class="n">&#8635;</span><span class="s">Again</span>';
+  degWrap.appendChild(skip);
+
+  function renderDots() {
+    dotsEl.innerHTML = "";
+    for (var i = 0; i < total; i++) {
+      var s = document.createElement("span");
+      s.className = "dot" + (i < idx ? " done" : i === idx ? " now" : "");
+      dotsEl.appendChild(s);
+    }
+  }
+  renderDots();
+
+  function setButtons(on) {
+    Array.prototype.forEach.call(degWrap.children, function (b) {
+      b.disabled = !on;
+      b.classList.remove("is-right", "is-wrong");
+    });
+  }
+
+  function newItem() {
+    answered = false;
+    locked = true;
+    target = 1 + Math.floor(Math.random() * 7);
+    verdict.innerHTML = "";
+    setButtons(false);
+    promptEl.textContent = "Listening…";
+    orb.classList.remove("good", "bad");
+    orb.classList.add("ringing");
+    orbIcon.innerHTML = "&#9834;";
+
+    var c = audio();
+    var after = playCadence(c.currentTime + 0.08);
+    playDegree(target, after + 0.25, 1.2);
+
+    var waitMs = (after + 0.25 - c.currentTime) * 1000;
+    setTimeout(function () {
+      orb.classList.remove("ringing");
+      orbIcon.innerHTML = "&#9835;";
+      promptEl.textContent = "Which degree of G major was that?";
+      locked = false;
+      setButtons(true);
+    }, waitMs + 220);
+  }
+
+  function comboSound(n) {
+    var c = audio(), t = c.currentTime + 0.02;
+    var top = n >= 6 ? 12 : n >= 3 ? 7 : 4;   // octave / fifth / third above tonic
+    voice(degMidi(target), t, 0.5, 0.24);
+    voice(TONIC + 12, t + 0.22, 0.7, 0.17);
+    voice(TONIC + 12 + top, t + 0.22, 0.7, 0.12);
+  }
+
+  function comparative(picked) {
+    var c = audio(), t = c.currentTime + 0.05;
+    playDegree(picked, t, 0.7);                 // what you said
+    playDegree(target, t + 0.95, 0.7);          // what it was
+    chord([TONIC, TONIC + 7, TONIC + 16], t + 1.95, 0.8, 0.13);
+    voice(degMidi(target), t + 1.95, 0.9, 0.24); // and in context
+  }
+
+  function answer(picked) {
+    if (locked || answered) return;
+    answered = true;
+    locked = true;
+    setButtons(false);
+
+    var right = picked === target;
+    Array.prototype.forEach.call(degWrap.children, function (b) {
+      var v = Number(b.dataset.deg);
+      if (v === target) b.classList.add("is-right");
+      if (!right && v === picked) b.classList.add("is-wrong");
+    });
+
+    if (right) {
+      streak++;
+      best = Math.max(best, streak);
+      orb.classList.add("good");
+      comboSound(streak);
+      verdict.innerHTML =
+        '<div class="big" style="color:var(--nw-correct)">' + target + " &middot; " + SOLFA[target - 1] + "</div>" +
+        '<div class="sub">' + (streak >= 3 ? "COMBO ×" + streak + " — CLIMBING" : "RESOLVED TO TONIC") + "</div>";
+    } else {
+      streak = 0;
+      orb.classList.add("bad");
+      comparative(picked);
+      verdict.innerHTML =
+        '<div class="big" style="color:var(--nw-wrong)">It was ' + target + " &middot; " + SOLFA[target - 1] + "</div>" +
+        '<div class="sub">YOURS &rarr; CORRECT &rarr; IN CONTEXT</div>';
+    }
+    comboEl.textContent = streak >= 2 ? "×" + streak + " COMBO" : best ? "BEST ×" + best : "—";
+    promptEl.textContent = right ? "Next one coming…" : "Hear the difference?";
+
+    idx = (idx + 1) % total;
+    renderDots();
+    setTimeout(newItem, right ? 1500 : 3400);
+  }
+
+  degWrap.addEventListener("click", function (e) {
+    var b = e.target.closest(".deg");
+    if (!b || b.disabled) return;
+    var v = Number(b.dataset.deg);
+    if (v === 0) { replay(); return; }
+    answer(v);
+  });
+
+  function replay() {
+    if (answered || target === null) return;
+    var c = audio();
+    playDegree(target, c.currentTime + 0.05, 1.1);
+  }
+  document.getElementById("replayBtn").addEventListener("click", replay);
+
+  document.getElementById("hintBtn").addEventListener("click", function () {
+    if (answered || target === null) return;
+    var stable = [1, 3, 5].indexOf(target) !== -1;
+    verdict.innerHTML = '<div class="sub">HINT &middot; ' + (stable ? "A STABLE TONE — IT SITS STILL" : "AN ACTIVE TONE — IT WANTS TO MOVE") + "</div>";
+    var c = audio();
+    chord([TONIC, TONIC + 7, TONIC + 16], c.currentTime + 0.05, 0.8, 0.13);
+  });
+
+  orb.addEventListener("click", function () {
+    if (target === null) newItem();
+    else if (!answered) replay();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key >= "1" && e.key <= "7") answer(Number(e.key));
+    if (e.key === "r") replay();
+  });
+
+  /* ---------------- staff drawing ---------------- */
+  var SP = 5; // half a staff space, in px: one diatonic step
+  // diatonic index measured from E4 (bottom line of the treble staff) = 0
+  function yFor(step) { return 40 - step * SP; }
+
+  function staffSVG(w, h, notes, opts) {
+    opts = opts || {};
+    var ink = getComputedStyle(document.documentElement).getPropertyValue("--ink-staff").trim();
+    var faint = getComputedStyle(document.documentElement).getPropertyValue("--nw-text-subtle").trim();
+    var accent = getComputedStyle(document.documentElement).getPropertyValue("--nw-accent").trim();
+    var s = '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="' + h + '" role="img" aria-label="Notated music excerpt">';
+    var top = opts.top === undefined ? 26 : opts.top;
+    s += '<g transform="translate(0,' + top + ')">';
+
+    // five lines
+    for (var i = 0; i < 5; i++) {
+      var y = i * 10;
+      s += '<line x1="0" y1="' + y + '" x2="' + w + '" y2="' + y + '" stroke="' + ink + '" stroke-opacity=".34" stroke-width="1"/>';
+    }
+    // clef (Unicode; the real app engraves with Bravura)
+    s += '<text x="8" y="38" font-size="52" fill="' + ink + '" fill-opacity=".8" font-family="' +
+         '\'Bravura\',\'Segoe UI Symbol\',\'Apple Symbols\',\'Noto Music\',serif">&#119070;</text>';
+    // key signature: G major, one sharp on the F5 line (step 8)
+    s += '<text x="42" y="' + (yFor(8) + 7) + '" font-size="21" fill="' + ink + '" fill-opacity=".75" font-family="serif">&#9839;</text>';
+
+    notes.forEach(function (n) {
+      var x = n.x, y = yFor(n.step);
+      var col = n.color || ink;
+      var op = n.op === undefined ? 1 : n.op;
+      // ledger lines below the staff
+      if (n.step < 0) {
+        for (var k = -2; k >= n.step; k -= 2) {
+          s += '<line x1="' + (x - 9) + '" y1="' + yFor(k) + '" x2="' + (x + 9) + '" y2="' + yFor(k) +
+               '" stroke="' + ink + '" stroke-opacity="' + (0.34 * op) + '" stroke-width="1"/>';
+        }
+      }
+      s += '<ellipse cx="' + x + '" cy="' + y + '" rx="6" ry="4.4" transform="rotate(-20 ' + x + " " + y +
+           ')" fill="' + col + '" fill-opacity="' + op + '"/>';
+      var up = n.step < 4;
+      var sx = up ? x + 5.6 : x - 5.6;
+      var sy2 = up ? y - 30 : y + 30;
+      s += '<line x1="' + sx + '" y1="' + y + '" x2="' + sx + '" y2="' + sy2 +
+           '" stroke="' + col + '" stroke-opacity="' + op + '" stroke-width="1.5"/>';
+    });
+
+    if (opts.playhead !== undefined) {
+      s += '<line x1="' + opts.playhead + '" y1="-16" x2="' + opts.playhead + '" y2="56" stroke="' + accent +
+           '" stroke-width="1.5" stroke-opacity=".9"/>';
+      s += '<circle cx="' + opts.playhead + '" cy="-16" r="3" fill="' + accent + '"/>';
+    }
+    if (opts.trace) {
+      s += '<path d="' + opts.trace + '" fill="none" stroke="' + (opts.traceColor || accent) +
+           '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-opacity=".95"/>';
+    }
+    if (opts.band) {
+      s += opts.band;
+    }
+    s += "</g></svg>";
+    if (faint) { /* referenced for parity with theme reads */ }
+    return s;
+  }
+
+  /* --- scroll reading card: notes fade behind the playhead --- */
+  var SCROLL_NOTES = [2, 4, 5, 7, 5, 4, 2, 0, 2, 4, 7, 9, 7, 5, 4, 2];
+  function drawScroll() {
+    var box = document.getElementById("scrollStaff");
+    if (!box) return;
+    var w = 280, head = 96;
+    var notes = SCROLL_NOTES.map(function (st, i) {
+      var x = 74 + i * 26;
+      var op = x < head ? 0.14 : x < head + 26 ? 0.55 : 1;   // the lookahead veil
+      return { x: x, step: st, op: op, color: x < head ? undefined : undefined };
+    }).filter(function (n) { return n.x < w + 20; });
+    box.innerHTML = staffSVG(w, 92, notes, { playhead: head });
+  }
+
+  /* --- sight-singing card: pitch ribbon over the staff --- */
+  function drawTrace() {
+    var box = document.getElementById("traceStaff");
+    if (!box) return;
+    var w = 280;
+    var line = [4, 5, 7, 9, 7, 5, 4];   // the written line
+    var notes = line.map(function (st, i) { return { x: 78 + i * 28, step: st, op: .55 }; });
+
+    // a plausible sung trace: locks on, drifts flat on the leap, recovers
+    var pts = [], n = 150;
+    for (var i = 0; i < n; i++) {
+      var t = i / (n - 1);
+      var pos = t * (line.length - 1);
+      var k = Math.min(line.length - 1, Math.floor(pos));
+      var st = line[k];
+      var drift = (k === 3 ? -0.55 * Math.max(0, 1 - (pos - 3) * 1.6) : 0);   // flat, then corrects
+      var vib = Math.sin(t * 52) * 0.075;
+      var onset = Math.max(0, 1 - (pos - k) * 9) * (k > 0 ? (line[k] - line[k - 1]) * -0.28 : 0);
+      var step = st + drift + vib + onset;
+      pts.push((78 + t * (line.length - 1) * 28) + "," + yFor(step));
+    }
+    var cool = getComputedStyle(document.documentElement).getPropertyValue("--nw-cool").trim();
+    // target band around the written pitches
+    var band = "";
+    line.forEach(function (st, i) {
+      band += '<rect x="' + (78 + i * 28 - 13) + '" y="' + (yFor(st) - 4) + '" width="26" height="8" rx="3" fill="' +
+              cool + '" fill-opacity=".13"/>';
+    });
+    box.innerHTML = staffSVG(w, 92, notes, {
+      trace: "M" + pts.join("L"),
+      traceColor: cool,
+      band: band
+    });
+  }
+
+  /* --- musicianship map --- */
+  var MAP_NODES = [
+    { x: 52,  y: 44,  r: 9,  s: "mastered", p: "theory" },
+    { x: 110, y: 30,  r: 7,  s: "mastered", p: "ear" },
+    { x: 168, y: 52,  r: 8,  s: "mastered", p: "ear" },
+    { x: 92,  y: 88,  r: 11, s: "current",  p: "ear" },
+    { x: 34,  y: 108, r: 7,  s: "mastered", p: "reading" },
+    { x: 152, y: 116, r: 9,  s: "review",   p: "ear" },
+    { x: 208, y: 92,  r: 7,  s: "open",     p: "voice" },
+    { x: 66,  y: 158, r: 8,  s: "open",     p: "reading" },
+    { x: 130, y: 176, r: 7,  s: "locked",   p: "theory" },
+    { x: 196, y: 152, r: 8,  s: "locked",   p: "voice" },
+    { x: 24,  y: 62,  r: 6,  s: "mastered", p: "theory" },
+    { x: 216, y: 42,  r: 6,  s: "open",     p: "reading" }
+  ];
+  var MAP_EDGES = [[0,1],[1,2],[0,3],[1,3],[3,4],[3,5],[2,5],[5,6],[4,7],[3,7],[7,8],[5,9],[6,9],[10,0],[2,11]];
+
+  function drawMap() {
+    var box = document.getElementById("mapBox");
+    if (!box) return;
+    var cs = getComputedStyle(document.documentElement);
+    var col = {
+      ear: cs.getPropertyValue("--p-ear").trim(),
+      reading: cs.getPropertyValue("--p-reading").trim(),
+      theory: cs.getPropertyValue("--p-theory").trim(),
+      voice: cs.getPropertyValue("--p-voice").trim()
+    };
+    var line = cs.getPropertyValue("--nw-border").trim();
+    var sub = cs.getPropertyValue("--nw-text-subtle").trim();
+
+    var s = '<svg viewBox="0 0 240 200" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Skill map">';
+    MAP_EDGES.forEach(function (e) {
+      var a = MAP_NODES[e[0]], b = MAP_NODES[e[1]];
+      var live = a.s !== "locked" && b.s !== "locked";
+      s += '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y +
+           '" stroke="' + (live ? col[b.p] : line) + '" stroke-opacity="' + (live ? .28 : .5) +
+           '" stroke-width="1"' + (live ? "" : ' stroke-dasharray="2 3"') + "/>";
+    });
+    MAP_NODES.forEach(function (nd) {
+      var c = col[nd.p];
+      if (nd.s === "mastered") {
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + nd.r + '" fill="' + c + '" fill-opacity=".85"/>';
+      } else if (nd.s === "current") {
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + (nd.r + 7) + '" fill="' + c + '" fill-opacity=".10"/>';
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + nd.r + '" fill="' + c + '"/>';
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + (nd.r + 3.5) + '" fill="none" stroke="' + c + '" stroke-width="1.2"/>';
+      } else if (nd.s === "review") {
+        // retention decaying — the ring is intact, the fill has faded
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + nd.r + '" fill="' + c + '" fill-opacity=".22"/>';
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + nd.r + '" fill="none" stroke="' + c +
+             '" stroke-width="1.4" stroke-dasharray="3 2.4" stroke-opacity=".8"/>';
+      } else if (nd.s === "open") {
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + nd.r + '" fill="none" stroke="' + c + '" stroke-width="1.4"/>';
+      } else {
+        s += '<circle cx="' + nd.x + '" cy="' + nd.y + '" r="' + nd.r + '" fill="none" stroke="' + sub +
+             '" stroke-opacity=".45" stroke-width="1" stroke-dasharray="2 3"/>';
+      }
+    });
+    s += "</svg>";
+    box.innerHTML = s;
+  }
+
+  /* --- theory card: mini keyboard, D7 -> G --- */
+  var D7 = [50, 54, 57, 60], GMAJ = [55, 59, 62, 67];
+  function drawKeys() {
+    var box = document.getElementById("miniKeys");
+    if (!box) return;
+    var cs = getComputedStyle(document.documentElement);
+    var accent = cs.getPropertyValue("--nw-accent").trim();
+    var white = cs.getPropertyValue("--key-white").trim();
+    var black = cs.getPropertyValue("--key-black").trim();
+    var edge = cs.getPropertyValue("--nw-border").trim();
+
+    var lo = 48, hi = 72;
+    var isBlack = function (m) { return [1, 3, 6, 8, 10].indexOf(((m % 12) + 12) % 12) !== -1; };
+    var whites = [], i;
+    for (i = lo; i <= hi; i++) if (!isBlack(i)) whites.push(i);
+    var w = 240, kw = w / whites.length, h = 58;
+
+    var s = '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="' + h + '" role="img" aria-label="Keyboard showing D7 resolving to G">';
+    whites.forEach(function (m, n) {
+      var on = D7.indexOf(m) !== -1;
+      s += '<rect x="' + (n * kw) + '" y="0" width="' + (kw - 1.2) + '" height="' + h + '" rx="2.5" fill="' +
+           (on ? accent : white) + '" stroke="' + edge + '" stroke-width=".8"/>';
+    });
+    for (i = lo; i <= hi; i++) {
+      if (!isBlack(i)) continue;
+      var below = i - 1;
+      var n2 = whites.indexOf(below);
+      if (n2 < 0) continue;
+      var on2 = D7.indexOf(i) !== -1;
+      s += '<rect x="' + ((n2 + 1) * kw - kw * 0.31) + '" y="0" width="' + (kw * 0.62) + '" height="' + (h * 0.62) +
+           '" rx="2" fill="' + (on2 ? accent : black) + '" stroke="' + black + '" stroke-width="1"/>';
+    }
+    s += "</svg>";
+    box.innerHTML = s;
+  }
+
+  var kbCard = document.getElementById("kbCard");
+  if (kbCard) {
+    kbCard.style.cursor = "pointer";
+    kbCard.addEventListener("click", function () {
+      var c = audio(), t = c.currentTime + 0.05;
+      chord(D7, t, 0.85, 0.15);
+      chord(GMAJ, t + 0.95, 1.1, 0.15);
+    });
+  }
+
+  /* ---------------- render + animate ---------------- */
+  function drawAll() { drawScroll(); drawTrace(); drawMap(); drawKeys(); }
+  drawAll();
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduce) {
+    var off = 0;
+    setInterval(function () {
+      off = (off + 1) % SCROLL_NOTES.length;
+      var box = document.getElementById("scrollStaff");
+      if (!box) return;
+      var w = 280, head = 96;
+      var notes = [];
+      for (var i = 0; i < SCROLL_NOTES.length; i++) {
+        var st = SCROLL_NOTES[(i + off) % SCROLL_NOTES.length];
+        var x = 74 + i * 26;
+        if (x > w + 20) break;
+        var op = x < head ? 0.14 : x < head + 26 ? 0.55 : 1;
+        notes.push({ x: x, step: st, op: op });
+      }
+      box.innerHTML = staffSVG(w, 92, notes, { playhead: head });
+    }, 900);
+  }
+})();
+</script>
