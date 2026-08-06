@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Button, Card, Label, Screen } from '@/components/ui';
-import { LEVELS, getLevel } from '@/core/levels';
+import { LEVELS, STAGE_LABEL, getLevel } from '@/core/levels';
 import { SOLFEGE, STEP_NICKNAME } from '@/core/music';
 import { useStore } from '@/store/useStore';
 import { playLevelUp } from '@/audio/engine';
@@ -54,8 +54,7 @@ export default function Summary() {
           <Card tone="accent">
             <Label className="text-accent">You're ready</Label>
             <p className="mt-2.5 text-[15px] leading-relaxed">
-              You've been holding {Math.round(0.85 * 100)}%+ at this level. Level {level + 1} adds{' '}
-              {newNotes(level)}.
+              You've been holding 85%+ at this level. {whatsNext(level)}
             </p>
             <Button className="mt-4" onClick={levelUp}>
               Move to level {level + 1}
@@ -98,7 +97,7 @@ function observation(s: {
   weakSteps: number[];
 }): string {
   if (s.correct === s.total) {
-    return 'Clean round — every one. If that happens twice more, it is time for more notes.';
+    return 'Clean round — every one. Do that consistently and the next level opens up.';
   }
 
   const worst = s.weakSteps[0];
@@ -113,10 +112,27 @@ function observation(s: {
   return 'Nothing stood out this round. Consistency at this level is exactly what earns the next one.';
 }
 
-function newNotes(level: number): string {
-  const next = getLevel(level + 1);
+/** What level+1 actually changes, said plainly. */
+function whatsNext(level: number): string {
   const current = getLevel(level);
+  const next = getLevel(level + 1);
+
+  if (current.stage !== next.stage) {
+    return `Next comes ${STAGE_LABEL[next.stage].toLowerCase()} — ${next.blurb.toLowerCase()}`;
+  }
+  if (current.drone && !next.drone) {
+    return 'Next, the drone comes off and you hold home in your head instead.';
+  }
+  if (current.kind !== next.kind) {
+    return `Level ${next.id} changes the question: ${next.blurb.toLowerCase()}`;
+  }
+
   const added = next.steps.filter((s) => !current.steps.includes(s));
-  if (added.length === 0) return 'a shorter introduction to the key';
-  return added.map((s) => `${s} · ${SOLFEGE[s - 1]}`).join(' and ');
+  if (added.length) {
+    return `Level ${next.id} adds ${added.map((s) => `${s} · ${SOLFEGE[s - 1]}`).join(' and ')}.`;
+  }
+  if (next.twoOctaves && !current.twoOctaves) {
+    return `Level ${next.id} widens the range to two octaves.`;
+  }
+  return `Level ${next.id} gives you a shorter introduction to the key.`;
 }

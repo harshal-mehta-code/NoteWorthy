@@ -3,48 +3,57 @@ import { useNavigate } from 'react-router';
 import { Button, Label, Screen } from '@/components/ui';
 import { useStore } from '@/store/useStore';
 import { DEFAULT_KEY, stepToMidi } from '@/core/music';
-import { now, playKeyIntro, playNote, unlockAudio } from '@/audio/engine';
+import { playNote, startDrone, stopDrone, unlockAudio } from '@/audio/engine';
+
+type Demo = 'home' | 'away';
 
 /**
- * Three screens, one idea each. The middle one is the important one: rather
- * than explaining what a cadence is, it plays one and names what you just
- * heard. The concept is much easier to hear than to read.
+ * Three screens, one idea each.
+ *
+ * The middle one is the important one, and it teaches rather than explains:
+ * a drone holds home, and you can play a note that *is* home and a note that
+ * isn't, back to back, as many times as you like. Hearing home blend into
+ * the drone and then hearing another note rub against it is the entire
+ * foundation of the app, and it takes about ten seconds to feel.
  */
 export default function Welcome() {
   const navigate = useNavigate();
   const completeOnboarding = useStore((s) => s.completeOnboarding);
   const [step, setStep] = useState(0);
-  const [demoState, setDemoState] = useState<'idle' | 'key' | 'note' | 'done'>('idle');
+  const [heard, setHeard] = useState<Set<Demo>>(new Set());
+  const [lastPlayed, setLastPlayed] = useState<Demo | null>(null);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
     const t = timers.current;
-    return () => t.forEach(clearTimeout);
+    return () => {
+      t.forEach(clearTimeout);
+      stopDrone();
+    };
   }, []);
 
-  async function playDemo() {
+  // The drone belongs to screen two only.
+  useEffect(() => {
+    if (step !== 1) stopDrone();
+  }, [step]);
+
+  async function play(which: Demo) {
     await unlockAudio();
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+    startDrone(DEFAULT_KEY.tonic);
+    setLastPlayed(which);
+    setHeard((prev) => new Set(prev).add(which));
 
-    const tonic = DEFAULT_KEY.tonic;
-    setDemoState('key');
-    const introEndsAt = playKeyIntro(tonic, 'full');
-    const noteDelayMs = Math.max(0, (introEndsAt - now()) * 1000);
-
-    timers.current.push(
-      window.setTimeout(() => {
-        setDemoState('note');
-        playNote(stepToMidi(tonic, 3, true), 0.02, 1.1);
-      }, noteDelayMs),
-    );
-    timers.current.push(window.setTimeout(() => setDemoState('done'), noteDelayMs + 1200));
+    const midi = stepToMidi(DEFAULT_KEY.tonic, which === 'home' ? 1 : 4, true);
+    timers.current.push(window.setTimeout(() => playNote(midi, 0.02, 1.6, 0.3), 550));
   }
 
   function finish() {
+    stopDrone();
     completeOnboarding();
     navigate('/', { replace: true });
   }
+
+  const heardBoth = heard.has('home') && heard.has('away');
 
   const steps = [
     {
@@ -53,62 +62,67 @@ export default function Welcome() {
       body: (
         <>
           <p>
-            Every song lives in a <em>key</em> — a set of seven notes that sound like they belong
+            Every song lives in a <em>key</em> — a set of notes that sound like they belong
             together, with one of them feeling like <strong className="text-ink">home</strong>.
           </p>
           <p>
-            Train your ear to place a note against that home and you can start working out music by
-            ear. It's the skill underneath playing along, transcribing, improvising and singing in
-            tune.
+            Hearing where a note sits against that home is the skill underneath playing along,
+            working out songs by ear, improvising, and singing in tune.
           </p>
         </>
       ),
-      action: <Button onClick={() => setStep(1)}>Show me</Button>,
+      action: <Button onClick={() => setStep(1)}>Let me hear it</Button>,
     },
     {
-      label: 'How a question works',
-      title: 'First the key, then one note.',
+      label: 'The whole idea, in one listen',
+      title: 'Home blends in. Everything else rubs.',
       body: (
         <>
           <p>
-            Each question opens with a few chords. That's not a test — it's there to plant{' '}
-            <strong className="text-ink">home</strong> in your ear so the note that follows has
-            something to sit against.
+            You'll hear a steady tone underneath — that's <strong className="text-ink">home</strong>,
+            holding. Play both notes over it and notice how different they feel.
           </p>
-          <p>Press play and listen for the two parts.</p>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <DemoButton
+              onClick={() => play('home')}
+              active={lastPlayed === 'home'}
+              done={heard.has('home')}
+              title="Home"
+              caption="settles, disappears"
+            />
+            <DemoButton
+              onClick={() => play('away')}
+              active={lastPlayed === 'away'}
+              done={heard.has('away')}
+              title="Not home"
+              caption="leans, wants to move"
+            />
+          </div>
+          <p className="text-subtle">
+            {heardBoth
+              ? 'That difference is what the first four levels train, and nothing else.'
+              : 'Play them both — ideally a couple of times each.'}
+          </p>
         </>
       ),
       action: (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Marker active={demoState === 'key'} done={demoState === 'note' || demoState === 'done'}>
-              The key
-            </Marker>
-            <Marker active={demoState === 'note'} done={demoState === 'done'}>
-              The note
-            </Marker>
-          </div>
-          <Button variant="secondary" onClick={playDemo}>
-            {demoState === 'idle' ? 'Play an example' : 'Play it again'}
-          </Button>
-          <Button onClick={() => setStep(2)} disabled={demoState === 'idle'}>
-            {demoState === 'idle' ? 'Listen first' : 'Makes sense'}
-          </Button>
-        </div>
+        <Button onClick={() => setStep(2)} disabled={!heardBoth}>
+          {heardBoth ? 'I hear the difference' : 'Play both to continue'}
+        </Button>
       ),
     },
     {
       label: 'Your first round',
-      title: 'Three notes to start.',
+      title: 'Two buttons to start.',
       body: (
         <>
           <p>
-            You'll begin with just the three notes of the home chord, and more get added as those
-            become easy.
+            Level one is exactly what you just did: the drone holds home, one note plays, and you
+            say whether it was home or not. Two buttons, nothing to memorise.
           </p>
           <p>
-            A round is ten questions — about ninety seconds. Get one wrong and you'll hear your
-            answer and the right one back to back, which is the fastest way to fix it.
+            The drone comes off later, and only then do we start naming notes. A round is eight
+            questions — well under a minute.
           </p>
         </>
       ),
@@ -144,26 +158,34 @@ export default function Welcome() {
   );
 }
 
-function Marker({
-  children,
+function DemoButton({
+  onClick,
   active,
   done,
+  title,
+  caption,
 }: {
-  children: React.ReactNode;
+  onClick: () => void;
   active: boolean;
   done: boolean;
+  title: string;
+  caption: string;
 }) {
   return (
-    <div
-      className={`flex-1 rounded-xl border px-3 py-2.5 text-center text-sm font-medium transition ${
+    <button
+      onClick={onClick}
+      className={`rounded-xl border px-3 py-4 text-center transition active:scale-[0.97] ${
         active
-          ? 'border-accent bg-accent-wash text-accent'
+          ? 'border-accent bg-accent-wash'
           : done
-            ? 'border-line text-muted'
-            : 'border-line text-subtle'
+            ? 'border-line-strong bg-surface'
+            : 'border-line bg-surface hover:border-line-strong'
       }`}
     >
-      {children}
-    </div>
+      <span className={`block text-[15px] font-semibold ${active ? 'text-accent' : 'text-ink'}`}>
+        {title}
+      </span>
+      <span className="mt-0.5 block text-[12px] leading-snug text-subtle">{caption}</span>
+    </button>
   );
 }

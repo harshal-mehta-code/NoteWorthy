@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Card, Label, Screen, Sheet } from '@/components/ui';
-import { LEVELS, getLevel } from '@/core/levels';
+import { LEVELS, STAGE_BLURB, STAGE_LABEL, getLevel, type Stage } from '@/core/levels';
 import { recentAccuracy, useStore } from '@/store/useStore';
 import { unlockAudio } from '@/audio/engine';
 
@@ -27,6 +27,8 @@ export default function Home() {
     navigate('/practice');
   }
 
+  const stages: Stage[] = ['finding', 'naming'];
+
   return (
     <Screen className="pad-top pad-bottom">
       <header className="flex items-center justify-between py-2">
@@ -41,14 +43,20 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 flex-col justify-center py-8">
-        <Label className="text-accent">Find the Note</Label>
+        <Label className="text-accent">{STAGE_LABEL[current.stage]}</Label>
         <h1 className="mt-3 text-[36px] leading-[1.05] font-bold tracking-[-0.04em] text-balance">
           {current.name}
         </h1>
         <p className="mt-4 text-[16px] leading-relaxed text-muted">{current.blurb}</p>
 
-        <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2">
-          <StepPreview steps={current.steps} />
+        <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {current.drone ? (
+            <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
+              Drone holds home
+            </span>
+          ) : (
+            <StepPreview steps={current.steps} />
+          )}
           {accuracy !== null && (
             <span className="tnum font-mono text-xs text-subtle">
               {Math.round(accuracy * 100)}% lately
@@ -59,15 +67,17 @@ export default function Home() {
         {totalSessions === 0 && (
           <Card tone="accent" className="mt-7">
             <p className="text-[15px] leading-relaxed">
-              A round is ten questions and takes about ninety seconds. There's no timer and no way
-              to fail.
+              A round is {current.roundLength} questions and takes under a minute. There's no timer
+              and no way to fail.
             </p>
           </Card>
         )}
       </div>
 
       <div className="space-y-3 pb-2">
-        <Button onClick={start}>{totalSessions === 0 ? 'Start your first round' : 'Start a round'}</Button>
+        <Button onClick={start}>
+          {totalSessions === 0 ? 'Start your first round' : 'Start a round'}
+        </Button>
         <button
           onClick={() => setPicking(true)}
           className="w-full py-1 text-center text-sm text-subtle transition hover:text-ink"
@@ -83,38 +93,50 @@ export default function Home() {
 
       <Sheet open={picking} onClose={() => setPicking(false)} title="Choose a level">
         <p>
-          Levels add notes one small group at a time. Jump around freely — nothing is locked, and
-          your progress at each level is kept separately.
+          The first four teach you to <em>find</em> home, with a drone holding it underneath. The
+          rest take the drone away and ask you to name what you hear.
         </p>
-        <div className="space-y-2 pt-1">
-          {LEVELS.map((l) => {
-            const acc = recentAccuracy(stats[l.id]);
-            const active = l.id === level;
-            return (
-              <button
-                key={l.id}
-                onClick={() => {
-                  setLevel(l.id);
-                  setPicking(false);
-                }}
-                className={`w-full rounded-xl border p-3.5 text-left transition ${
-                  active
-                    ? 'border-accent bg-accent-wash'
-                    : 'border-line bg-surface hover:border-line-strong'
-                }`}
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className={`font-semibold ${active ? 'text-accent' : 'text-ink'}`}>
-                    {l.id}. {l.name}
-                  </span>
-                  <span className="tnum shrink-0 font-mono text-[11px] text-subtle">
-                    {acc === null ? `${l.steps.length} notes` : `${Math.round(acc * 100)}%`}
-                  </span>
-                </div>
-                <span className="mt-1 block text-[13px] leading-snug text-muted">{l.blurb}</span>
-              </button>
-            );
-          })}
+        <p className="text-subtle">Nothing is locked — jump around freely.</p>
+
+        <div className="space-y-5 pt-1">
+          {stages.map((stage) => (
+            <div key={stage}>
+              <Label className="text-accent">{STAGE_LABEL[stage]}</Label>
+              <p className="mt-1 mb-2.5 text-[13px] text-subtle">{STAGE_BLURB[stage]}</p>
+              <div className="space-y-2">
+                {LEVELS.filter((l) => l.stage === stage).map((l) => {
+                  const acc = recentAccuracy(stats[l.id]);
+                  const active = l.id === level;
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => {
+                        setLevel(l.id);
+                        setPicking(false);
+                      }}
+                      className={`w-full rounded-xl border p-3.5 text-left transition ${
+                        active
+                          ? 'border-accent bg-accent-wash'
+                          : 'border-line bg-surface hover:border-line-strong'
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className={`font-semibold ${active ? 'text-accent' : 'text-ink'}`}>
+                          {l.id}. {l.name}
+                        </span>
+                        <span className="tnum shrink-0 font-mono text-[11px] text-subtle">
+                          {acc === null ? '' : `${Math.round(acc * 100)}%`}
+                        </span>
+                      </div>
+                      <span className="mt-1 block text-[13px] leading-snug text-muted">
+                        {l.blurb}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </Sheet>
     </Screen>

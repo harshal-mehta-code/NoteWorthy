@@ -65,7 +65,17 @@ Abstract intervals still matter (atonal contexts, leaps in wide-interval melodie
 
 **Context establishment**: before each functional item, play a short cadence in the key (I–IV–V–I, or a compact V7–I). Randomize the voicing and instrument so users key off the tonality rather than memorizing one specific sound.
 
-### 2.2 The degree ladder
+### 2.2 Before the ladder: finding home
+
+Everything below assumes the learner can locate the tonic. Most people cannot, at first — and asking "which scale degree was that?" of someone who can't yet feel home is testing a skill rather than building one. The prerequisite gets trained explicitly, in three moves:
+
+1. **Compare, don't remember.** A drone holds the tonic continuously. A note that *is* the tonic blends into it; anything else beats against it. This is a perceptual discrimination with the reference still sounding, which is far easier than a memory task and requires no vocabulary at all.
+2. **Generalise to stability.** Same drone, but the question becomes "settled or restless?" — which moves the learner from recognising one specific pitch to recognising tonal *function*. This is the actual transferable skill.
+3. **Drop the reference.** Three notes, one of them home; pick it. Now the tonic has to be held in working memory, which is exactly what the naming drills will require.
+
+Only then does the degree ladder make sense.
+
+### 2.3 The degree ladder
 Scale degrees introduced in an order driven by perceptual salience and tonal stability — stable tones first, then the tones that pull toward them:
 
 1. **1, 5** — tonic and dominant, the two anchors
@@ -76,7 +86,7 @@ Scale degrees introduced in an order driven by perceptual salience and tonal sta
 6. **Chromatics** — introduced by function, not chromatically: ♭7 first (mixolydian/blues, most common), then ♯4 (lydian/secondary dominant), then ♭3, ♭6, ♭2
 7. **Two-octave range**, then leaps across octaves
 
-### 2.3 Melodic dictation ladder
+### 2.4 Melodic dictation ladder
 Length grows only when accuracy holds:
 
 `2 notes → 3 → 4 → 5-note phrase → 8-note phrase → 2-bar phrase with rhythm`
@@ -85,7 +95,7 @@ Answer modes, in increasing difficulty and value: degree buttons → staff place
 
 Rhythm is introduced independently, then combined. Combining pitch and rhythm too early swamps working memory and stalls both.
 
-### 2.4 Harmony ladder
+### 2.5 Harmony ladder
 1. Chord **quality** in isolation: maj / min → + dim / aug → + dominant 7 → + maj7 / min7 / m7♭5 → extensions
 2. Chord **inversions** (root / 1st / 2nd) — trains bass-note hearing
 3. **Diatonic function in a key**: I, IV, V first (covers a huge share of real music), then vi, ii, iii, vii°
@@ -94,7 +104,7 @@ Rhythm is introduced independently, then combined. Combining pitch and rhythm to
 6. **Bass-line hearing** — hearing the bass is what unlocks transcription; explicitly trained, rarely taught
 7. **Modal interchange & secondary dominants** — the "why does that chord sound cool" tier
 
-### 2.5 Working memory constraints
+### 2.6 Working memory constraints
 Auditory working memory holds roughly 3–5 chunks for a few seconds. So:
 
 - Never ask for more than ~4 new items before an answer opportunity.

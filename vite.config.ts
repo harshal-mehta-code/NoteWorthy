@@ -27,7 +27,21 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Samples are deliberately not precached — that would put ~840KB in
+        // the install. They're cached the first time they're heard instead,
+        // and the synth covers the gap until then.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/samples/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'noteworthy-samples',
+              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 180 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

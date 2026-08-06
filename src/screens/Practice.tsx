@@ -1,28 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Dots, IconButton, Screen, Sheet } from '@/components/ui';
-import { INTRO_HELP, INTRO_LABEL, ROUND_LENGTH, getLevel } from '@/core/levels';
+import { INTRO_HELP, INTRO_LABEL, getLevel } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
-import { KEYS, SOLFEGE, STEP_NICKNAME, pickRandom, pickStep, stepToMidi } from '@/core/music';
+import { KEYS, pickRandom, stepToMidi } from '@/core/music';
+import { columnsFor, generate, stepForOption, type Question } from '@/core/question';
 import { useStore } from '@/store/useStore';
 import {
   now,
+  playAgainstHome,
   playComparison,
   playCorrect,
+  playCorrectSimple,
   playKeyIntro,
-  playNote,
+  playSequence,
   playSessionEnd,
   playTapTick,
+  startDrone,
+  stopDrone,
   unlockAudio,
 } from '@/audio/engine';
 
-type Phase = 'intro' | 'question' | 'correct' | 'wrong';
+type Phase = 'intro' | 'playing' | 'question' | 'correct' | 'wrong';
 
-type Item = { step: number; octaveUp: boolean };
-
-/** Pause after feedback before the next question starts. */
 const HOLD_CORRECT_MS = 1250;
-const HOLD_WRONG_MS = 3300;
+const HOLD_WRONG_MS = 3200;
+/** Gap between notes when a question plays more than one. */
+const SEQUENCE_GAP = 0.95;
 
 export default function Practice() {
   const navigate = useNavigate();
@@ -37,19 +41,25 @@ export default function Practice() {
   const config = getLevel(level);
 
   /** Key is fixed for the whole round — changing it mid-round would be cruel. */
-  const tonic = useMemo(() => {
-    const chosen =
-      keyMode === 'random' ? pickRandom(KEYS) : (KEYS.find((k) => k.name === keyName) ?? KEYS[0]);
-    return chosen;
+  const tonic = useMemo(
+    () =>
+      keyMode === 'random' ? pickRandom(KEYS) : (KEYS.find((k) => k.name === keyName) ?? KEYS[0]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    [],
+  );
 
-  const introMode: IntroMode = introOverride === 'auto' ? config.intro : introOverride;
+  // The intro override is a naming-stage idea; drone levels have no intro.
+  const introMode: IntroMode = config.drone
+    ? 'none'
+    : introOverride === 'auto'
+      ? config.intro
+      : introOverride;
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('intro');
-  const [item, setItem] = useState<Item | null>(null);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [question, setQuestion] = useState<Question | null>(null);
+  const [playingIndex, setPlayingIndex] = useState(-1);
+  const [picked, setPicked] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -66,35 +76,87 @@ export default function Practice() {
     timers.current.push(window.setTimeout(fn, ms));
   };
 
-  useEffect(() => clearTimers, []);
+  // The drone runs for the whole round, and must not outlive the screen.
+  useEffect(() => {
+    return () => {
+      clearTimers();
+      stopDrone();
+    };
+  }, []);
 
-  /** Start a question: establish the key, then play the note. */
+  const midisFor = useCallback(
+    (q: Question) => q.sequence.map((step, i) => stepToMidi(tonic.tonic, step, q.octaveUp[i])),
+    [tonic.tonic],
+  );
+
+  /** Play the question's notes, marking which one is sounding. */
+  const playQuestion = useCallback(
+    (q: Question, onLastNote: () => void) => {
+      const midis = midisFor(q);
+      setPlayingIndex(0);
+
+      if (midis.length === 1) {
+        playSequence(midis, SEQUENCE_GAP, 1.15, 0.26);
+        later(() => {
+          setPlayingIndex(-1);
+          onLastNote();
+        }, 260);
+        return;
+      }
+
+      playSequence(midis, SEQUENCE_GAP, 0.72, 0.26);
+      midis.forEach((_, i) => {
+        later(() => setPlayingIndex(i), i * SEQUENCE_GAP * 1000 + 80);
+      });
+      later(
+        () => {
+          setPlayingIndex(-1);
+          onLastNote();
+        },
+        (midis.length - 1) * SEQUENCE_GAP * 1000 + 420,
+      );
+    },
+    [midisFor],
+  );
+
   const askQuestion = useCallback(
     (questionIndex: number) => {
       clearTimers();
       answered.current = false;
       setPicked(null);
-      setPhase('intro');
 
-      const step = pickStep(config.steps, prevStep.current);
-      prevStep.current = step;
-      const octaveUp = config.twoOctaves && Math.random() < 0.35;
-      const next = { step, octaveUp };
-      setItem(next);
+      const q = generate(config, prevStep.current);
+      prevStep.current = q.sequence[q.sequence.length - 1];
+      setQuestion(q);
 
-      // The first question always gets a proper introduction, even at levels
-      // that normally run without one — otherwise you start with no bearings.
+      const startPlaying = () => {
+        setPhase('playing');
+        playQuestion(q, () => setPhase('question'));
+      };
+
+      if (config.drone) {
+        // The drone is the reference, so there's nothing to introduce. Give
+        // the first question a beat longer so the drone has faded up first.
+        setPhase('playing');
+        later(startPlaying, questionIndex === 0 ? 950 : 320);
+        return;
+      }
+
+      // Without a drone you need the key planted first. Even a level that
+      // normally runs without an intro gets one on question one, or you
+      // start with no bearings at all.
       const mode: IntroMode = questionIndex === 0 && introMode === 'none' ? 'short' : introMode;
+      if (mode === 'none') {
+        setPhase('playing');
+        later(startPlaying, 320);
+        return;
+      }
 
+      setPhase('intro');
       const introEnds = playKeyIntro(tonic.tonic, mode);
-      const gapMs = Math.max(120, (introEnds - now()) * 1000 + 220);
-
-      later(() => {
-        setPhase('question');
-        playNote(stepToMidi(tonic.tonic, next.step, next.octaveUp), 0.02, 1.15);
-      }, gapMs);
+      later(startPlaying, Math.max(120, (introEnds - now()) * 1000 + 240));
     },
-    [config.steps, config.twoOctaves, introMode, tonic.tonic],
+    [config, introMode, playQuestion, tonic.tonic],
   );
 
   // Guarded so StrictMode's double-invoke can't start two rounds at once.
@@ -102,17 +164,23 @@ export default function Practice() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    void unlockAudio().then(() => askQuestion(0));
+    void unlockAudio().then(() => {
+      if (config.drone) startDrone(tonic.tonic);
+      askQuestion(0);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function answer(step: number) {
-    if (phase !== 'question' || answered.current || !item) return;
+  function answer(optionId: string) {
+    if (phase !== 'question' || answered.current || !question) return;
     answered.current = true;
-    setPicked(step);
+    setPicked(optionId);
 
-    const correct = step === item.step;
+    const correct = optionId === question.correctId;
     recordAnswer(level, correct);
+
+    const heardMidi = midisFor(question)[0];
+    const homeMidi = stepToMidi(tonic.tonic, 1);
 
     if (correct) {
       const nextStreak = streak + 1;
@@ -120,31 +188,49 @@ export default function Practice() {
       score.current.correct += 1;
       score.current.bestStreak = Math.max(score.current.bestStreak, nextStreak);
       setPhase('correct');
-      playCorrect(tonic.tonic, stepToMidi(tonic.tonic, item.step, item.octaveUp), nextStreak);
+
+      if (question.kind === 'name-the-note') {
+        playCorrect(tonic.tonic, heardMidi, nextStreak);
+      } else {
+        const soundMidi =
+          question.kind === 'which-is-home' ? homeMidi : heardMidi;
+        playCorrectSimple(tonic.tonic, soundMidi);
+      }
       later(advance, HOLD_CORRECT_MS);
-    } else {
-      setStreak(0);
-      score.current.misses.set(item.step, (score.current.misses.get(item.step) ?? 0) + 1);
-      setPhase('wrong');
+      return;
+    }
+
+    setStreak(0);
+    setPhase('wrong');
+    score.current.misses.set(missKey(question, optionId), (score.current.misses.get(missKey(question, optionId)) ?? 0) + 1);
+
+    if (question.kind === 'name-the-note') {
+      const pickedMidi = stepToMidi(tonic.tonic, Number(optionId), question.octaveUp[0]);
+      playComparison(tonic.tonic, pickedMidi, heardMidi);
+    } else if (question.kind === 'which-is-home') {
+      const pickedStep = stepForOption(question, optionId);
       playComparison(
         tonic.tonic,
-        stepToMidi(tonic.tonic, step, item.octaveUp),
-        stepToMidi(tonic.tonic, item.step, item.octaveUp),
+        stepToMidi(tonic.tonic, pickedStep ?? 1),
+        homeMidi,
       );
-      later(advance, HOLD_WRONG_MS);
+    } else {
+      playAgainstHome(tonic.tonic, heardMidi);
     }
+    later(advance, HOLD_WRONG_MS);
   }
 
   function advance() {
     const next = index + 1;
-    if (next >= ROUND_LENGTH) {
+    if (next >= config.roundLength) {
       const weakSteps = [...score.current.misses.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(([step]) => step);
+      stopDrone();
       finishSession({
         levelId: level,
         correct: score.current.correct,
-        total: ROUND_LENGTH,
+        total: config.roundLength,
         bestStreak: score.current.bestStreak,
         weakSteps,
       });
@@ -156,119 +242,126 @@ export default function Practice() {
     askQuestion(next);
   }
 
-  function replayNote() {
-    if (phase !== 'question' || !item) return;
-    playNote(stepToMidi(tonic.tonic, item.step, item.octaveUp), 0.02, 1.05);
+  function replay() {
+    if (phase !== 'question' || !question) return;
+    setPhase('playing');
+    playQuestion(question, () => setPhase('question'));
   }
 
-  function replayKey() {
-    if (phase === 'intro') return;
-    playKeyIntro(tonic.tonic, 'home');
-  }
-
-  // Number keys answer, space replays.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (!question) return;
       if (e.key === ' ') {
         e.preventDefault();
-        replayNote();
+        replay();
         return;
       }
       const n = Number(e.key);
-      if (Number.isInteger(n) && config.steps.includes(n)) answer(n);
+      if (!Number.isInteger(n) || n < 1) return;
+      const option =
+        question.kind === 'name-the-note'
+          ? question.options.find((o) => o.id === String(n))
+          : question.options[n - 1];
+      if (option) answer(option.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const cols = config.steps.length <= 3 ? 3 : config.steps.length <= 6 ? 3 : 4;
+  const revealed = phase === 'correct' || phase === 'wrong';
+  const cols = question ? columnsFor(question) : 3;
+  const multi = (question?.sequence.length ?? 1) > 1;
 
   return (
     <Screen className="pad-top pad-bottom">
       <header className="flex items-center gap-4 py-2">
         <IconButton label="End round" onClick={() => navigate('/')}>
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-            <path
-              d="M3 3l9 9M12 3l-9 9"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
+            <path d="M3 3l9 9M12 3l-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </IconButton>
         <div className="ml-auto">
-          <Dots total={ROUND_LENGTH} index={index} />
+          <Dots total={config.roundLength} index={index} />
         </div>
       </header>
 
-      <div className="flex justify-center pt-4">
+      <div className="flex justify-center gap-2 pt-4">
         <span className="label rounded-full border border-accent-dim bg-accent-wash px-3 py-1.5 text-accent">
           Key of {tonic.name}
         </span>
+        {config.drone && (
+          <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
+            Drone on
+          </span>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 py-4 text-center">
-        <button
-          onClick={replayNote}
-          aria-label="Play the note again"
-          className={`grid size-32 place-items-center rounded-full border bg-surface transition ${
-            phase === 'correct'
-              ? 'anim-pulse border-correct'
-              : phase === 'wrong'
-                ? 'anim-shake border-wrong'
-                : phase === 'intro'
-                  ? 'anim-ring border-line'
-                  : 'border-line-strong'
-          }`}
-        >
-          <span
-            className={`text-[34px] leading-none ${
-              phase === 'intro' ? 'text-subtle' : 'text-accent'
+        {multi ? (
+          <SequenceOrbs
+            count={question?.sequence.length ?? 3}
+            playing={playingIndex}
+            phase={phase}
+            answerIndex={revealed ? Number(question?.correctId) : -1}
+            pickedIndex={revealed && picked !== null ? Number(picked) : -1}
+          />
+        ) : (
+          <button
+            onClick={replay}
+            aria-label="Play the note again"
+            className={`grid size-32 place-items-center rounded-full border bg-surface transition ${
+              phase === 'correct'
+                ? 'anim-pulse border-correct'
+                : phase === 'wrong'
+                  ? 'anim-shake border-wrong'
+                  : phase === 'playing'
+                    ? 'anim-ring border-accent-dim'
+                    : phase === 'intro'
+                      ? 'anim-ring border-line'
+                      : 'border-line-strong'
             }`}
-            aria-hidden="true"
           >
-            {phase === 'intro' ? '♩' : '♪'}
-          </span>
-        </button>
+            <span
+              className={`text-[34px] leading-none ${
+                phase === 'intro' ? 'text-subtle' : 'text-accent'
+              }`}
+              aria-hidden="true"
+            >
+              {phase === 'intro' ? '♩' : '♪'}
+            </span>
+          </button>
+        )}
 
-        <p className="max-w-[26ch] text-[15px] text-muted">
+        <p className="max-w-[28ch] text-[15px] text-muted">
           {phase === 'intro'
             ? 'Settling into the key…'
-            : phase === 'question'
-              ? 'Which note was that?'
-              : ''}
+            : phase === 'playing'
+              ? 'Listen…'
+              : phase === 'question'
+                ? promptFor(question)
+                : ''}
         </p>
 
-        <div className="flex min-h-[64px] flex-col items-center justify-center gap-1">
-          {phase === 'correct' && item && (
+        <div className="flex min-h-[68px] max-w-[30ch] flex-col items-center justify-center gap-1.5">
+          {revealed && question && (
             <>
-              <p className="text-xl font-bold tracking-tight text-correct">
-                {stepLabel(item.step, labelStyle)}
+              <p
+                className={`text-xl font-bold tracking-tight ${
+                  phase === 'correct' ? 'text-correct' : 'text-wrong'
+                }`}
+              >
+                {question.answerLabel}
               </p>
-              <p className="label text-subtle">
-                {streak >= 3 ? `${streak} in a row` : STEP_NICKNAME[item.step]}
-              </p>
-            </>
-          )}
-          {phase === 'wrong' && item && (
-            <>
-              <p className="text-xl font-bold tracking-tight text-wrong">
-                It was {stepLabel(item.step, labelStyle)}
-              </p>
-              <p className="label text-subtle">Yours → the real one → in the key</p>
+              <p className="text-[13px] leading-snug text-subtle">{question.explain}</p>
             </>
           )}
         </div>
       </div>
 
-      <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-      >
-        {config.steps.map((step) => {
-          const isAnswer = item?.step === step;
-          const isPicked = picked === step;
-          const revealed = phase === 'correct' || phase === 'wrong';
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {question?.options.map((option) => {
+          const isAnswer = option.id === question.correctId;
+          const isPicked = option.id === picked;
           const tone = revealed
             ? isAnswer
               ? 'border-correct bg-correct-wash text-correct'
@@ -279,22 +372,29 @@ export default function Practice() {
 
           return (
             <button
-              key={step}
+              key={option.id}
               disabled={phase !== 'question'}
               onPointerDown={() => {
-                if (phase === 'question') playTapTick(stepToMidi(tonic.tonic, step));
+                const step = stepForOption(question, option.id);
+                if (phase === 'question' && step !== null) playTapTick(stepToMidi(tonic.tonic, step));
               }}
-              onClick={() => answer(step)}
-              className={`grid gap-0.5 rounded-xl border py-3.5 transition active:scale-[0.97] disabled:active:scale-100 ${tone} ${
-                phase === 'intro' ? 'opacity-45' : ''
+              onClick={() => answer(option.id)}
+              className={`grid gap-0.5 rounded-xl border px-1 py-3.5 transition active:scale-[0.97] disabled:active:scale-100 ${tone} ${
+                phase === 'intro' || phase === 'playing' ? 'opacity-45' : ''
               }`}
             >
-              <span className="tnum text-[20px] leading-none font-bold tracking-tight">
-                {labelStyle === 'numbers' ? step : SOLFEGE[step - 1]}
+              <span className="tnum text-[17px] leading-tight font-bold tracking-tight">
+                {question.kind === 'name-the-note' && labelStyle === 'solfege'
+                  ? (option.secondary ?? option.primary)
+                  : option.primary}
               </span>
-              <span className="label text-[9px] opacity-70">
-                {labelStyle === 'numbers' ? SOLFEGE[step - 1] : step}
-              </span>
+              {option.secondary && (
+                <span className="text-[10px] leading-tight opacity-65">
+                  {question.kind === 'name-the-note' && labelStyle === 'solfege'
+                    ? option.primary
+                    : option.secondary}
+                </span>
+              )}
             </button>
           );
         })}
@@ -302,11 +402,11 @@ export default function Practice() {
 
       <div className="flex items-center justify-between gap-2 pt-3 pb-1 text-[13px]">
         <button
-          onClick={replayKey}
+          onClick={replay}
+          disabled={phase !== 'question'}
           className="py-2 text-subtle transition hover:text-ink disabled:opacity-40"
-          disabled={phase === 'intro'}
         >
-          Hear home
+          Play again
         </button>
         <span className="tnum text-accent">{streak >= 2 ? `${streak} in a row` : ''}</span>
         <button onClick={() => setHelpOpen(true)} className="py-2 text-subtle transition hover:text-ink">
@@ -314,30 +414,103 @@ export default function Practice() {
         </button>
       </div>
 
-      <Sheet open={helpOpen} onClose={() => setHelpOpen(false)} title="What am I doing?">
-        <p>
-          The chords at the start of each question plant <strong className="text-ink">home</strong>{' '}
-          in your ear. Then one note plays, and you say which of the key's notes it was.
-        </p>
-        <p>
-          <strong className="text-ink">1</strong> is home itself.{' '}
-          <strong className="text-ink">5</strong> is the strong one that sounds settled but not
-          finished. <strong className="text-ink">3</strong> is the bright one that tells you the key
-          is major.
-        </p>
-        <p>
-          Don't count intervals. Just ask: does this note sound like it's arrived, or like it wants
-          to move? That instinct is the whole skill.
-        </p>
+      <Sheet open={helpOpen} onClose={() => setHelpOpen(false)} title="What's this?">
+        {config.drone ? (
+          <>
+            <p>
+              That steady tone underneath is <strong className="text-ink">home</strong>. It never
+              changes, so you don't have to remember anything — you just compare.
+            </p>
+            <p>
+              A note that <em>is</em> home blends into the drone and almost disappears. Every other
+              note sits against it and creates a little friction. That friction is the thing to
+              listen for.
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              The chords at the start plant <strong className="text-ink">home</strong> in your ear.
+              Then the question plays, and now you have to hold home in your head rather than hear it.
+            </p>
+            <p>
+              Don't count intervals. Ask instead: has this note arrived, or does it want to move?
+              That instinct is the whole skill.
+            </p>
+          </>
+        )}
         <p className="text-subtle">
-          Currently using: <span className="text-ink">{INTRO_LABEL[introMode]}</span> —{' '}
-          {INTRO_HELP[introMode]}
+          Level {config.id} · {config.name}
+          {!config.drone && (
+            <>
+              {' '}
+              — <span className="text-ink">{INTRO_LABEL[introMode]}</span>, {INTRO_HELP[introMode]}
+            </>
+          )}
         </p>
       </Sheet>
     </Screen>
   );
 }
 
-function stepLabel(step: number, style: 'numbers' | 'solfege'): string {
-  return style === 'numbers' ? `${step} · ${SOLFEGE[step - 1]}` : `${SOLFEGE[step - 1]} · ${step}`;
+function promptFor(q: Question | null): string {
+  switch (q?.kind) {
+    case 'home-or-not':
+      return 'Was that home?';
+    case 'rest-or-move':
+      return 'Settled, or restless?';
+    case 'which-is-home':
+      return 'Which one was home?';
+    default:
+      return 'Which note was that?';
+  }
+}
+
+/** Which step to blame for an error, so the summary can be specific. */
+function missKey(q: Question, pickedId: string): number {
+  if (q.kind === 'which-is-home') return stepForOption(q, pickedId) ?? q.sequence[0];
+  return q.sequence[0];
+}
+
+/** Three lozenges for the multi-note question, lighting as each note sounds. */
+function SequenceOrbs({
+  count,
+  playing,
+  phase,
+  answerIndex,
+  pickedIndex,
+}: {
+  count: number;
+  playing: number;
+  phase: Phase;
+  answerIndex: number;
+  pickedIndex: number;
+}) {
+  const revealed = phase === 'correct' || phase === 'wrong';
+  return (
+    <div className="flex items-center gap-3">
+      {Array.from({ length: count }, (_, i) => {
+        const active = playing === i;
+        const tone = revealed
+          ? i === answerIndex
+            ? 'border-correct text-correct'
+            : i === pickedIndex
+              ? 'border-wrong text-wrong'
+              : 'border-line text-subtle'
+          : active
+            ? 'border-accent text-accent'
+            : 'border-line text-subtle';
+        return (
+          <div
+            key={i}
+            className={`grid size-[68px] place-items-center rounded-2xl border bg-surface transition ${tone} ${
+              active ? 'scale-105' : ''
+            }`}
+          >
+            <span className="tnum text-lg font-bold">{i + 1}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }

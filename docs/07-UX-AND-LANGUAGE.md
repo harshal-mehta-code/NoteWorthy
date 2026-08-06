@@ -64,16 +64,36 @@ Plain, specific, no exclamation marks, no cheerleading. Feedback states a fact a
 
 ---
 
-## 3. Difficulty: one axis at a time
+## 3. Difficulty: teach the prerequisite first
 
-The other source of overwhelm was too many notes at once. The ladder now adds a small group, holds everything else constant, and only withdraws help once every note is in play:
+The original ladder started by asking which of seven notes you'd heard. That silently assumes you can already **find home** — and nothing anywhere was teaching that. It tested the skill instead of building it.
+
+So the ladder now has two stages, and the first one exists purely to make the second one learnable.
+
+### Stage 1 — Finding home
+A **drone** holds the home note under everything. That is the whole trick: with home sounding continuously you *compare* rather than *remember*, so the question stops depending on a memory you don't have yet.
+
+| Level | Question | Notes |
+|---|---|---|
+| 1 — Home or away | Was that note home? | 1 vs 5 |
+| 2 — Spot home anywhere | Was that note home? | 1 vs any |
+| 3 — Settled or restless | Had it arrived, or did it want to move? | all seven |
+| 4 — Find home | Three notes play — which was home? | drone off |
+
+The progression inside the stage is: recognise home against an obvious contrast → against any contrast → generalise to *stability* rather than one specific note → hold home in memory without the drone. Level 4 is the bridge, and one of its two distractors is always a 3 or a 5, because those are what people actually mistake for home.
+
+### Stage 2 — Naming the notes
+The drone is gone. Now the key is planted by a chord intro and you name what you hear.
 
 | Level | Notes | Intro to the key |
 |---|---|---|
-| 1 — The home chord | 1, 3, 5 | Full |
-| 2 — The two that pull | + 4, 7 | Full |
-| 3 — All seven | + 2, 6 | Full |
-| 4 — Less help | all seven | Short |
-| 5 — On your own | all seven, two octaves | Home chord only |
+| 5 — The home chord | 1, 3, 5 | Full |
+| 6 — The two that pull | + 4, 7 | Full |
+| 7 — All seven | + 2, 6 | Full |
+| 8 — Less help | all seven | Short |
+| 9 — On your own | all seven, two octaves | Home chord only |
 
-Three buttons on the first screen instead of seven is the single biggest reason the drill now feels approachable.
+**One axis moves at a time.** Notes are added, or help is withdrawn, never both — and help only starts being withdrawn once all seven notes are in play.
+
+### Round length
+Six questions in the naming stage, eight in the yes/no stage where each question is quicker. Under a minute either way. Long rounds make the app feel like homework; a short round you'll happily repeat beats a long one you won't start.
