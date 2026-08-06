@@ -93,7 +93,28 @@ The drone is gone. Now the key is planted by a chord intro and you name what you
 | 8 — Less help | all seven | Short |
 | 9 — On your own | all seven, two octaves | Home chord only |
 
-**One axis moves at a time.** Notes are added, or help is withdrawn, never both — and help only starts being withdrawn once all seven notes are in play.
+### Stage 3 — Going deeper
+Where it stops being gentle. Each level moves a *different* axis, so none of them is just "the same thing but faster".
+
+| Level | What changes | Axis |
+|---|---|---|
+| 10 — Two in a row | Two notes play; name both in order | phrase length |
+| 11 — Three in a row | Three notes, shorter intro | phrase length + help |
+| 12 — Minor keys | Third, sixth and seventh all move down | mode |
+| 13 — Colour notes | Adds ♭7 and ♯4, from outside the key | chromaticism |
+| 14 — Nothing to hold onto | New key every question, two octaves, one chord of intro | reference |
+
+**One axis moves at a time.** Notes are added, or help is withdrawn, or the phrase gets longer — never two at once, and help only starts being withdrawn once all seven notes are in play.
 
 ### Round length
-Six questions in the naming stage, eight in the yes/no stage where each question is quicker. Under a minute either way. Long rounds make the app feel like homework; a short round you'll happily repeat beats a long one you won't start.
+Six questions in the naming stage, eight in the yes/no stage where each question is quicker, five at level 11 where each one is three notes. Under a minute either way. Long rounds make the app feel like homework; a short round you'll happily repeat beats a long one you won't start.
+
+---
+
+## 4. Adaptation: the app notices
+
+Two things run off per-note history, kept per level.
+
+**Selection.** Notes you've been missing come up more often — weighted up to 3.5×, floored at 1× so a note you're good at never disappears entirely. Practising only your weak spots lets the strong ones quietly rot. Weights are captured once per round rather than recomputed live, because a distribution that chases a single bad answer reads as the app picking on you.
+
+**Reporting.** The summary's single observation prefers history over this round: ten questions is far too few to say anything reliable. It reaches for the weakest note across every round at the level, mentions it by name and nickname, and says whether it's climbing. Underneath, a quiet strip of tinted chips gives per-note accuracy at a glance — scannable in a second, which a table never is.

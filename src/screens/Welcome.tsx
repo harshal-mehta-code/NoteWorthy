@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Label, Screen } from '@/components/ui';
 import { useStore } from '@/store/useStore';
-import { DEFAULT_KEY, stepToMidi } from '@/core/music';
+import { DEFAULT_KEY, degreeToMidi } from '@/core/music';
 import { playNote, startDrone, stopDrone, unlockAudio } from '@/audio/engine';
 
 type Demo = 'home' | 'away';
@@ -43,7 +43,7 @@ export default function Welcome() {
     setLastPlayed(which);
     setHeard((prev) => new Set(prev).add(which));
 
-    const midi = stepToMidi(DEFAULT_KEY.tonic, which === 'home' ? 1 : 4, true);
+    const midi = degreeToMidi(DEFAULT_KEY.tonic, which === 'home' ? 0 : 5, true);
     timers.current.push(window.setTimeout(() => playNote(midi, 0.02, 1.6, 0.3), 550));
   }
 

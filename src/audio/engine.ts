@@ -9,7 +9,7 @@
  * current key, including the feedback. See docs/03-GAMIFICATION.md §2.
  */
 
-import { midiToHz, tonicTriad } from '@/core/music';
+import { midiToHz, tonicTriad, type Mode } from '@/core/music';
 import type { IntroMode } from '@/core/levels';
 import { loadSamples, playSampled, samplesReady } from './sampler';
 
@@ -136,20 +136,28 @@ export function playSequence(midis: number[], gap = 0.85, dur = 0.7, level = 0.2
  * alone. Returns the time the intro finishes, so the caller can schedule the
  * question right after it.
  */
-export function playKeyIntro(tonic: number, mode: IntroMode, delay = 0.08): number {
+export function playKeyIntro(
+  tonic: number,
+  intro: IntroMode,
+  mode: Mode = 'major',
+  delay = 0.08,
+): number {
   const t = now() + delay;
-  if (mode === 'none') return t;
+  if (intro === 'none') return t;
 
-  const I = tonicTriad(tonic);
-  const IV = [tonic + 5, tonic + 12, tonic + 17, tonic + 21];
+  // Minor uses i-iv-V7-i: the dominant keeps its raised third, because that
+  // leading tone is most of what makes the key feel resolved.
+  const third = mode === 'minor' ? 3 : 4;
+  const I = tonicTriad(tonic, mode);
+  const IV = [tonic + 5, tonic + 12, tonic + 12 + third + 1, tonic + 21];
   const V7 = [tonic + 7, tonic + 11, tonic + 14, tonic + 17];
 
-  if (mode === 'home') {
+  if (intro === 'home') {
     chord(I, t, 0.75, 0.17);
     return t + 0.95;
   }
 
-  if (mode === 'short') {
+  if (intro === 'short') {
     chord(V7, t, 0.44, 0.16);
     chord(I, t + 0.46, 0.72, 0.17);
     return t + 1.32;
@@ -229,9 +237,15 @@ export function droneRunning(): boolean {
  * As the streak grows the resolution climbs — third, fifth, octave — so a
  * run of correct answers literally sounds like a rising arpeggio.
  */
-export function playCorrect(tonic: number, answered: number, streak: number): void {
+export function playCorrect(
+  tonic: number,
+  answered: number,
+  streak: number,
+  mode: Mode = 'major',
+): void {
   const t = now() + 0.02;
-  const top = streak >= 6 ? 12 : streak >= 3 ? 7 : 4;
+  const third = mode === 'minor' ? 3 : 4;
+  const top = streak >= 6 ? 12 : streak >= 3 ? 7 : third;
   voice(answered, t, 0.5, 0.24);
   voice(tonic + 12, t + 0.2, 0.72, 0.16);
   voice(tonic + 12 + top, t + 0.2, 0.72, 0.11);
@@ -249,11 +263,16 @@ export function playCorrectSimple(tonic: number, heard: number): void {
  * over the home chord. Hearing the contrast is what corrects the mistake —
  * red text on its own teaches nothing about sound.
  */
-export function playComparison(tonic: number, picked: number, correct: number): number {
+export function playComparison(
+  tonic: number,
+  picked: number,
+  correct: number,
+  mode: Mode = 'major',
+): number {
   const t = now() + 0.05;
   voice(picked, t, 0.62, 0.24);
   voice(correct, t + 0.9, 0.62, 0.24);
-  chord(tonicTriad(tonic), t + 1.8, 0.85, 0.13);
+  chord(tonicTriad(tonic, mode), t + 1.8, 0.85, 0.13);
   voice(correct, t + 1.85, 0.9, 0.24);
   return t + 2.8;
 }
@@ -272,10 +291,11 @@ export function playAgainstHome(tonic: number, heard: number): number {
 }
 
 /** Session-complete sting: a resolved cadence. Closure, literally. */
-export function playSessionEnd(tonic: number): void {
+export function playSessionEnd(tonic: number, mode: Mode = 'major'): void {
   const t = now() + 0.05;
+  const third = mode === 'minor' ? 3 : 4;
   chord([tonic + 7, tonic + 11, tonic + 14, tonic + 17], t, 0.4, 0.15);
-  chord([tonic, tonic + 7, tonic + 16, tonic + 24], t + 0.42, 1.3, 0.17);
+  chord([tonic, tonic + 7, tonic + 12 + third, tonic + 24], t + 0.42, 1.3, 0.17);
 }
 
 /** Level-up sting: same cadence, fuller and brighter. */

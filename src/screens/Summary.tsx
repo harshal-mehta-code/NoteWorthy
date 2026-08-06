@@ -2,8 +2,14 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Button, Card, Label, Screen } from '@/components/ui';
 import { LEVELS, STAGE_LABEL, getLevel } from '@/core/levels';
-import { SOLFEGE, STEP_NICKNAME } from '@/core/music';
-import { useStore } from '@/store/useStore';
+import { degreeLabel, degreeNickname, degreeSolfege, type Deg, type Mode } from '@/core/music';
+import {
+  degreeReport,
+  useStore,
+  weakestDegree,
+  type DegreeStat,
+  type SessionResult,
+} from '@/store/useStore';
 import { playLevelUp } from '@/audio/engine';
 
 export default function Summary() {
@@ -12,6 +18,7 @@ export default function Summary() {
   const level = useStore((s) => s.level);
   const setLevel = useStore((s) => s.setLevel);
   const streakDays = useStore((s) => s.streakDays);
+  const allDegreeStats = useStore((s) => s.degreeStats);
   const [promoted, setPromoted] = useState(false);
 
   const canLevelUp = session?.promoted && level < LEVELS.length && !promoted;
@@ -24,6 +31,8 @@ export default function Summary() {
 
   if (!session) return <Navigate to="/" replace />;
 
+  const config = getLevel(session.levelId);
+  const degreeStats = allDegreeStats[session.levelId];
   const pct = Math.round((session.correct / session.total) * 100);
 
   function levelUp() {
@@ -33,7 +42,7 @@ export default function Summary() {
 
   return (
     <Screen className="pad-top pad-bottom">
-      <div className="anim-rise flex flex-1 flex-col justify-center gap-7 py-10">
+      <div className="anim-rise flex flex-1 flex-col justify-center gap-6 py-8">
         <div className="text-center">
           <Label className="text-accent">Round complete</Label>
           <p className="tnum mt-4 text-[64px] leading-none font-bold tracking-[-0.05em]">
@@ -41,14 +50,20 @@ export default function Summary() {
             <span className="text-subtle">/{session.total}</span>
           </p>
           <p className="mt-3 text-[15px] text-muted">
-            {getLevel(session.levelId).name} · {pct}% this round
+            {config.name} · {pct}% this round
           </p>
         </div>
 
         <Card tone="cool">
           <Label className="text-cool">One thing worth knowing</Label>
-          <p className="mt-2.5 text-[15px] leading-relaxed">{observation(session)}</p>
+          <p className="mt-2.5 text-[15px] leading-relaxed">
+            {observation(session, degreeStats, config.mode)}
+          </p>
         </Card>
+
+        {config.kind === 'name-the-note' && (
+          <NoteAccuracy degrees={config.degrees} stats={degreeStats} mode={config.mode} />
+        )}
 
         {canLevelUp && (
           <Card tone="accent">
@@ -87,22 +102,39 @@ export default function Summary() {
 }
 
 /**
- * One specific, earned observation — never a wall of stats. Specific beats
- * comprehensive (docs/03-GAMIFICATION.md §4.1).
+ * One specific, earned observation — never a wall of stats. Cross-round
+ * history beats this round's noise whenever there's enough of it: ten
+ * questions is far too few to say anything reliable on its own.
  */
-function observation(s: {
-  correct: number;
-  total: number;
-  bestStreak: number;
-  weakSteps: number[];
-}): string {
+function observation(
+  s: SessionResult,
+  stats: Record<number, DegreeStat> | undefined,
+  mode: Mode,
+): string {
+  const weakest = weakestDegree(stats, 5);
+
+  if (weakest && weakest.accuracy < 0.75) {
+    const name = `${degreeLabel(weakest.deg, mode)} · ${degreeSolfege(weakest.deg)}`;
+    const rate = Math.round(weakest.accuracy * 100);
+    if (weakest.trend === 'improving') {
+      return `${name} is still your weakest at ${rate}% across ${weakest.attempts} tries — but it's climbing. Keep going.`;
+    }
+    return `Across every round at this level, ${name} is your weakest at ${rate}% — ${degreeNickname(weakest.deg, mode)}. It'll come up more often now.`;
+  }
+
+  const climbing = improvingDegree(stats);
+  if (climbing !== null) {
+    const report = degreeReport(stats, climbing);
+    return `${degreeLabel(climbing, mode)} · ${degreeSolfege(climbing)} has come good — ${Math.round((report?.accuracy ?? 0) * 100)}% now, and clearly better than it was.`;
+  }
+
   if (s.correct === s.total) {
     return 'Clean round — every one. Do that consistently and the next level opens up.';
   }
 
-  const worst = s.weakSteps[0];
+  const worst = s.weakDegrees[0];
   if (worst !== undefined) {
-    return `${worst} · ${SOLFEGE[worst - 1]} caught you out most — ${STEP_NICKNAME[worst]}. Listen for whether the note has arrived or still wants to move.`;
+    return `${degreeLabel(worst, mode)} · ${degreeSolfege(worst)} caught you out most this round — ${degreeNickname(worst, mode)}.`;
   }
 
   if (s.bestStreak >= 5) {
@@ -110,6 +142,69 @@ function observation(s: {
   }
 
   return 'Nothing stood out this round. Consistency at this level is exactly what earns the next one.';
+}
+
+function improvingDegree(stats: Record<number, DegreeStat> | undefined): Deg | null {
+  if (!stats) return null;
+  for (const [key, d] of Object.entries(stats)) {
+    const report = degreeReport(stats, Number(key));
+    if (report?.trend === 'improving' && d.right + d.wrong >= 8) return Number(key);
+  }
+  return null;
+}
+
+/**
+ * A quiet per-note strip rather than a table: tinted chips you can scan in
+ * a second, so "which notes am I bad at" is answerable without reading.
+ */
+function NoteAccuracy({
+  degrees,
+  stats,
+  mode,
+}: {
+  degrees: Deg[];
+  stats: Record<number, DegreeStat> | undefined;
+  mode: Mode;
+}) {
+  if (!stats) return null;
+  const seen = degrees.filter((d) => {
+    const s = stats[d];
+    return s && s.right + s.wrong >= 3;
+  });
+  if (seen.length < 3) return null;
+
+  return (
+    <div>
+      <Label>Your notes, all rounds</Label>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {degrees.map((deg) => {
+          const s = stats[deg];
+          const attempts = s ? s.right + s.wrong : 0;
+          const acc = attempts >= 3 ? s!.right / attempts : null;
+          const tone =
+            acc === null
+              ? 'border-line text-subtle'
+              : acc >= 0.85
+                ? 'border-correct/50 text-correct'
+                : acc >= 0.65
+                  ? 'border-accent-dim text-accent'
+                  : 'border-wrong/60 text-wrong';
+          return (
+            <div
+              key={deg}
+              className={`flex min-w-[52px] flex-col items-center rounded-lg border px-2 py-1.5 ${tone}`}
+              title={`${degreeLabel(deg, mode)} — ${attempts} tries`}
+            >
+              <span className="tnum text-[13px] font-bold">{degreeLabel(deg, mode)}</span>
+              <span className="tnum text-[10px] opacity-75">
+                {acc === null ? '—' : `${Math.round(acc * 100)}%`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /** What level+1 actually changes, said plainly. */
@@ -126,10 +221,19 @@ function whatsNext(level: number): string {
   if (current.kind !== next.kind) {
     return `Level ${next.id} changes the question: ${next.blurb.toLowerCase()}`;
   }
+  if (next.sequenceLength > current.sequenceLength) {
+    return `Level ${next.id} plays ${next.sequenceLength} notes in a row, and you name all of them.`;
+  }
+  if (next.mode !== current.mode) {
+    return `Level ${next.id} moves to minor keys, where three of the seven notes sit lower.`;
+  }
 
-  const added = next.steps.filter((s) => !current.steps.includes(s));
+  const added = next.degrees.filter((d) => !current.degrees.includes(d));
   if (added.length) {
-    return `Level ${next.id} adds ${added.map((s) => `${s} · ${SOLFEGE[s - 1]}`).join(' and ')}.`;
+    return `Level ${next.id} adds ${added.map((d) => `${degreeLabel(d, next.mode)} · ${degreeSolfege(d)}`).join(' and ')}.`;
+  }
+  if (next.keyPerQuestion && !current.keyPerQuestion) {
+    return `Level ${next.id} changes key on every question. Nothing to settle into.`;
   }
   if (next.twoOctaves && !current.twoOctaves) {
     return `Level ${next.id} widens the range to two octaves.`;

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Card, Label, Screen, Sheet } from '@/components/ui';
-import { LEVELS, STAGE_BLURB, STAGE_LABEL, getLevel, type Stage } from '@/core/levels';
+import { LEVELS, STAGE_BLURB, STAGE_LABEL, STAGES, getLevel } from '@/core/levels';
+import { degreeLabel, type Deg, type Mode } from '@/core/music';
 import { recentAccuracy, useStore } from '@/store/useStore';
 import { unlockAudio } from '@/audio/engine';
 
@@ -27,7 +28,6 @@ export default function Home() {
     navigate('/practice');
   }
 
-  const stages: Stage[] = ['finding', 'naming'];
 
   return (
     <Screen className="pad-top pad-bottom">
@@ -55,7 +55,7 @@ export default function Home() {
               Drone holds home
             </span>
           ) : (
-            <StepPreview steps={current.steps} />
+            <DegreePreview degrees={current.degrees} mode={current.mode} />
           )}
           {accuracy !== null && (
             <span className="tnum font-mono text-xs text-subtle">
@@ -94,12 +94,13 @@ export default function Home() {
       <Sheet open={picking} onClose={() => setPicking(false)} title="Choose a level">
         <p>
           The first four teach you to <em>find</em> home, with a drone holding it underneath. The
-          rest take the drone away and ask you to name what you hear.
+          middle five take the drone away and ask you to name what you hear. The last five stop
+          being gentle.
         </p>
         <p className="text-subtle">Nothing is locked — jump around freely.</p>
 
         <div className="space-y-5 pt-1">
-          {stages.map((stage) => (
+          {STAGES.map((stage) => (
             <div key={stage}>
               <Label className="text-accent">{STAGE_LABEL[stage]}</Label>
               <p className="mt-1 mb-2.5 text-[13px] text-subtle">{STAGE_BLURB[stage]}</p>
@@ -144,15 +145,15 @@ export default function Home() {
 }
 
 /** The notes in play at this level, as a row of chips. */
-function StepPreview({ steps }: { steps: number[] }) {
+function DegreePreview({ degrees, mode }: { degrees: Deg[]; mode: Mode }) {
   return (
-    <div className="flex gap-1.5" aria-label={`${steps.length} notes in play`}>
-      {steps.map((s) => (
+    <div className="flex flex-wrap gap-1.5" aria-label={`${degrees.length} notes in play`}>
+      {degrees.map((d) => (
         <span
-          key={s}
-          className="tnum grid size-7 place-items-center rounded-lg border border-line bg-surface font-mono text-[12px] text-muted"
+          key={d}
+          className="tnum grid h-7 min-w-7 place-items-center rounded-lg border border-line bg-surface px-1.5 font-mono text-[12px] text-muted"
         >
-          {s}
+          {degreeLabel(d, mode)}
         </span>
       ))}
     </div>

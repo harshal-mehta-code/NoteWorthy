@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.1 shipped.** The first drill — **Find the Note** — is built and deployed. Everything else below is planned.
+**Status: v0.2 shipped.** The first drill — **Find the Note** — is built and deployed across fourteen levels. The other three pillars are still planned.
 
 ```bash
 npm install
@@ -34,23 +34,27 @@ npm run dev
 
 ---
 
-## What's in v0.1
+## What's built
 
-**Find the Note** — nine levels across two stages.
+**Find the Note** — fourteen levels across three stages.
 
 **Stage 1, finding home.** A drone holds the home note underneath, so you *compare* rather than remember. Was that note home? Then: settled, or restless? Then the drone comes off and you pick home out of three. This stage exists because naming notes assumes you can already find home, and nothing was teaching that.
 
 **Stage 2, naming the notes.** A chord intro plants the key, then you name what you hear — three notes at first, then five, then all seven, then with less and less help.
 
+**Stage 3, going deeper.** Two- and three-note phrases, minor keys, chromatic colour notes (♭7 and ♯4), and finally a level that changes key on every question so there's nothing to settle into.
+
 - **Sampled piano**, with a synth fallback so the app always makes sound
+- **Adapts to you** — notes you keep missing come up more often, and the summary reports on your weakest note across every round, not just this one
 - Musical feedback: correct answers resolve to home and climb the scale as your streak grows; wrong answers play your note, the real one, then the real one in the key
 - Plain language throughout — no "degree", no "cadence", no "tonic"
-- Rounds are six or eight questions — under a minute
+- Rounds are five to eight questions — under a minute
+- Unit-tested core: every level's question generation is checked against its own rules
 - Midnight and Paper themes, keyboard input, works at 320px
 - Local-first: no account, nothing leaves the browser
 - Installable PWA, works offline
 
-Deliberately **not** in v0.1: tab bar, skill map, XP, achievements, the daily Warm-Up mix. They arrive when there's more than one drill to tie together — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
+Deliberately **not** built yet: tab bar, skill map, XP, achievements, the daily Warm-Up mix. They arrive when there's more than one drill to tie together — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
 
 ## Documentation
 
