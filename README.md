@@ -4,7 +4,12 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: planning.** No app code yet — the docs below are the plan, and `prototype/` holds a clickable visual prototype for feedback.
+**Status: v0.1 shipped.** The first drill — **Find the Note** — is built and deployed. Everything else below is planned.
+
+```bash
+npm install
+npm run dev
+```
 
 ---
 
@@ -12,10 +17,10 @@ Free, forever. Runs in the browser, installable as a PWA, works offline.
 
 | | |
 |---|---|
-| 🎧 **Ear training** | Functional (in-key) degree recognition first, intervals second, building to chord quality, inversions, and progression dictation. |
-| 👁 **Sight reading** | Landmark recognition → contour → rhythm → scrolling reads that never stop, plus **eye-span** training that attacks the real bottleneck. |
-| 🧠 **Music theory** | Bite-sized interactive lessons, every concept bound to an ear, reading, and vocal drill. |
-| 🎤 **Vocal training** | Live pitch feedback, interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
+| 🎧 **Ear training** | Hearing where a note sits inside a key first, intervals second, building to chord quality, inversions, and progression dictation. **Built.** |
+| 👁 **Sight reading** *(planned)* | Landmark recognition → contour → rhythm → scrolling reads that never stop, plus **eye-span** training that attacks the real bottleneck. |
+| 🧠 **Music theory** *(planned)* | Bite-sized interactive lessons, every concept bound to an ear, reading, and vocal drill. |
+| 🎤 **Vocal training** *(planned)* | Live pitch feedback, interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
 
 ## What makes it different
 
@@ -29,6 +34,19 @@ Free, forever. Runs in the browser, installable as a PWA, works offline.
 
 ---
 
+## What's in v0.1
+
+**Find the Note** — a short chord intro plants *home* in your ear, one note plays, you say which note of the key it was.
+
+- Five levels, starting with **three buttons** and adding notes a small group at a time
+- Musical feedback: correct answers resolve to home and climb the scale as your streak grows; wrong answers play your note, the real one, then the real one in the key
+- Plain language throughout — no "degree", no "cadence", no "tonic"
+- Midnight and Paper themes, keyboard input, works at 320px
+- Local-first: no account, nothing leaves the browser
+- Installable PWA, works offline
+
+Deliberately **not** in v0.1: tab bar, skill map, XP, achievements, the daily Warm-Up mix. They arrive when there's more than one drill to tie together — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
+
 ## Documentation
 
 Read in order:
@@ -41,7 +59,8 @@ Read in order:
 | [03-GAMIFICATION.md](docs/03-GAMIFICATION.md) | Engagement design, and the anti-patterns we forbid |
 | [04-ARCHITECTURE.md](docs/04-ARCHITECTURE.md) | Stack, module boundaries, data model, contracts |
 | [05-DESIGN-SYSTEM.md](docs/05-DESIGN-SYSTEM.md) | Tokens, type, motion, layout, components |
-| [06-ROADMAP.md](docs/06-ROADMAP.md) | Phases and dispatchable parallel work packages |
+| [06-ROADMAP.md](docs/06-ROADMAP.md) | What's shipped, what's next, and the parallel work packages for later |
+| [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) | Navigation rules and the plain-language glossary |
 
 ## Prototype
 
@@ -52,14 +71,16 @@ open prototype/index.html      # macOS
 xdg-open prototype/index.html  # Linux
 ```
 
-The Degree ID ear drill actually plays and grades. Five more screens are mocked: Today, Scroll Reading, Sight-Singing with a pitch trace, the Musicianship Map, a Theory lesson, and the session summary. Both themes included.
+Six screens covering all four pillars. Its ear-training screen is **superseded by the real app** — go there for that. The prototype remains the reference for the five screens not yet built: Today, Scroll Reading, Sight-Singing with a pitch trace, the Musicianship Map, and a Theory lesson.
 
 Rendered captures of every screen live in [`prototype/screens/`](prototype/screens). See [`prototype/README.md`](prototype/README.md) for what's real vs. mocked, and for the mapping from prototype shortcuts to real implementations — **the prototype is authoritative for look and feel, the docs are authoritative for behavior.**
 
-## Planned stack
+## Stack
 
-Vite · React 19 · TypeScript · Tailwind v4 · Zustand · Dexie · Tone.js · VexFlow 5 · pitchy · ts-fsrs · vite-plugin-pwa. Static deploy, no backend in v1. See [04-ARCHITECTURE.md](docs/04-ARCHITECTURE.md).
+**In use:** Vite · React 19 · TypeScript · Tailwind v4 · React Router · Zustand · Web Audio · vite-plugin-pwa. Static deploy, no backend.
+
+**Planned:** VexFlow 5 (notation) · pitchy (pitch detection) · ts-fsrs (spaced repetition) · Dexie (once localStorage stops being enough) · smplr (sampled piano). See [04-ARCHITECTURE.md](docs/04-ARCHITECTURE.md).
 
 ## Working in parallel
 
-Work is split into work packages that own disjoint paths so multiple sessions can run at once. See [06-ROADMAP.md](docs/06-ROADMAP.md) for the dependency graph and the dispatch prompt template.
+The first milestone is deliberately sequential — one drill at a time. Once there are several, work splits into packages that own disjoint paths so multiple sessions can run at once. See [06-ROADMAP.md](docs/06-ROADMAP.md).

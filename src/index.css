@@ -1,0 +1,255 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Design tokens — see docs/05-DESIGN-SYSTEM.md
+   Midnight is canonical; Paper is a first-class port.
+   ============================================================ */
+:root {
+  --nw-bg: #0a0b0d;
+  --nw-surface-1: #121417;
+  --nw-surface-2: #1a1d21;
+  --nw-surface-3: #24282d;
+  --nw-border: #2a2f35;
+  --nw-border-str: #3a4048;
+
+  --nw-text: #f2f4f6;
+  --nw-text-muted: #9ba3ad;
+  --nw-text-subtle: #646c76;
+
+  --nw-accent: #e8b44a;
+  --nw-accent-hot: #f5c761;
+  --nw-accent-dim: #8a6b2c;
+  --nw-accent-wash: rgb(232 180 74 / 0.12);
+  --nw-on-accent: #16130a;
+
+  --nw-cool: #4ecdc4;
+  --nw-correct: #5bc98b;
+  --nw-correct-wash: rgb(91 201 139 / 0.14);
+  --nw-wrong: #e5736b;
+  --nw-wrong-wash: rgb(229 115 107 / 0.12);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --nw-bg: #faf9f7;
+    --nw-surface-1: #ffffff;
+    --nw-surface-2: #f2f0ec;
+    --nw-surface-3: #e7e4de;
+    --nw-border: #dfdbd3;
+    --nw-border-str: #c6c0b5;
+
+    --nw-text: #1a1d21;
+    --nw-text-muted: #5c636b;
+    --nw-text-subtle: #8a9099;
+
+    --nw-accent: #a9761a;
+    --nw-accent-hot: #c08a22;
+    --nw-accent-dim: #d9be86;
+    --nw-accent-wash: rgb(169 118 26 / 0.1);
+    --nw-on-accent: #fff8ea;
+
+    --nw-cool: #1f8b83;
+    --nw-correct: #2f8d57;
+    --nw-correct-wash: rgb(47 141 87 / 0.12);
+    --nw-wrong: #c0453c;
+    --nw-wrong-wash: rgb(192 69 60 / 0.1);
+
+    color-scheme: light;
+  }
+}
+
+/* Explicit choice always beats the OS preference, in both directions. */
+:root[data-theme='light'] {
+  --nw-bg: #faf9f7;
+  --nw-surface-1: #ffffff;
+  --nw-surface-2: #f2f0ec;
+  --nw-surface-3: #e7e4de;
+  --nw-border: #dfdbd3;
+  --nw-border-str: #c6c0b5;
+  --nw-text: #1a1d21;
+  --nw-text-muted: #5c636b;
+  --nw-text-subtle: #8a9099;
+  --nw-accent: #a9761a;
+  --nw-accent-hot: #c08a22;
+  --nw-accent-dim: #d9be86;
+  --nw-accent-wash: rgb(169 118 26 / 0.1);
+  --nw-on-accent: #fff8ea;
+  --nw-cool: #1f8b83;
+  --nw-correct: #2f8d57;
+  --nw-correct-wash: rgb(47 141 87 / 0.12);
+  --nw-wrong: #c0453c;
+  --nw-wrong-wash: rgb(192 69 60 / 0.1);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --nw-bg: #0a0b0d;
+  --nw-surface-1: #121417;
+  --nw-surface-2: #1a1d21;
+  --nw-surface-3: #24282d;
+  --nw-border: #2a2f35;
+  --nw-border-str: #3a4048;
+  --nw-text: #f2f4f6;
+  --nw-text-muted: #9ba3ad;
+  --nw-text-subtle: #646c76;
+  --nw-accent: #e8b44a;
+  --nw-accent-hot: #f5c761;
+  --nw-accent-dim: #8a6b2c;
+  --nw-accent-wash: rgb(232 180 74 / 0.12);
+  --nw-on-accent: #16130a;
+  --nw-cool: #4ecdc4;
+  --nw-correct: #5bc98b;
+  --nw-correct-wash: rgb(91 201 139 / 0.14);
+  --nw-wrong: #e5736b;
+  --nw-wrong-wash: rgb(229 115 107 / 0.12);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--nw-bg);
+  --color-surface: var(--nw-surface-1);
+  --color-surface-2: var(--nw-surface-2);
+  --color-surface-3: var(--nw-surface-3);
+  --color-line: var(--nw-border);
+  --color-line-strong: var(--nw-border-str);
+  --color-ink: var(--nw-text);
+  --color-muted: var(--nw-text-muted);
+  --color-subtle: var(--nw-text-subtle);
+  --color-accent: var(--nw-accent);
+  --color-accent-hot: var(--nw-accent-hot);
+  --color-accent-dim: var(--nw-accent-dim);
+  --color-accent-wash: var(--nw-accent-wash);
+  --color-on-accent: var(--nw-on-accent);
+  --color-cool: var(--nw-cool);
+  --color-correct: var(--nw-correct);
+  --color-correct-wash: var(--nw-correct-wash);
+  --color-wrong: var(--nw-wrong);
+  --color-wrong-wash: var(--nw-wrong-wash);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--nw-bg);
+    color: var(--nw-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--nw-accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+@layer utilities {
+  .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Safe areas so the app sits right when installed */
+  .pad-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  .pad-bottom {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- motion ---------- */
+@keyframes nw-pulse {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes nw-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+@keyframes nw-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--nw-accent-wash);
+  }
+  100% {
+    box-shadow: 0 0 0 32px rgb(232 180 74 / 0);
+  }
+}
+@keyframes nw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-pulse {
+  animation: nw-pulse 420ms var(--ease-out-soft);
+}
+.anim-shake {
+  animation: nw-shake 220ms ease-in-out;
+}
+.anim-ring {
+  animation: nw-ring 1.1s var(--ease-out-soft) infinite;
+}
+.anim-rise {
+  animation: nw-rise 320ms var(--ease-out-soft) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

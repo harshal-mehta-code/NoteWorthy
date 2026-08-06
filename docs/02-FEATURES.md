@@ -28,11 +28,13 @@ explain(item, result)  → Feedback      // the A/B replay + concept card
 
 ## 1. 🎧 Ear Training
 
-### 1.1 Degree ID (functional) ⭐ — the backbone
-**What**: a cadence establishes the key, then a single note sounds. Identify its scale degree.
+### 1.1 Find the Note (functional) ⭐ — the backbone
+> Named **Degree ID** in earlier drafts. Renamed because "degree" is a theory word a beginner doesn't have yet — see [07-UX-AND-LANGUAGE.md](./07-UX-AND-LANGUAGE.md) §2. `Find the Note` is the user-facing name; concept ids keep `degree.*`.
+
+**What**: a short chord intro establishes the key ("home"), then a single note sounds. Say which note of the key it was.
 
 - **Input**: degree buttons (`1 2 3 4 5 6 7`, movable-do `Do Re Mi…`, or numeric — user preference), or **sing it back** (mic), or place it on a staff.
-- **Context modes**: full cadence (I–IV–V–I) → short cadence (V7–I) → drone only → no context (hard mode). Weaning off context is itself a progression axis.
+- **Intro to the key** (user-facing wording; "cadence" and "context" never appear on screen): full (I–IV–V–I) → short (V7–I) → home chord only → none. Weaning off the intro is its own progression axis, and it only starts once every note is in play — never at the same time as new notes.
 - **Scoring**: correct/incorrect, latency, replay count. Confusion pairs are tracked explicitly (3↔5 and 4↔7 are the classic ones) and feed targeted remediation.
 - **Progression**: degree ladder from `01-PEDAGOGY.md` §2.2. Then: octave range widens, tempo of presentation increases, context thins.
 - **Concept tags**: `degree.<n>.<mode>.<context-level>`
