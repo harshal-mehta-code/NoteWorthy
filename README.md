@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.5 shipped.** Five courses across all four pillars, plus a Practice library showing the whole shape of the app.
+**Status: v0.6 shipped.** Six courses across all four pillars, plus a Practice library showing the whole shape of the app.
 
 ```bash
 npm install
@@ -17,7 +17,7 @@ npm run dev
 
 | | |
 |---|---|
-| 🎧 **Ear training** | **Find the Note** (17 levels), **Chords** (7 levels) and **Intervals** (8 levels). Still to come: progressions and melodic dictation. |
+| 🎧 **Ear training** | **Find the Note** (17 levels), **Chords** (7), **Progressions** (7) and **Intervals** (8). Still to come: melodic dictation. |
 | 👁 **Sight reading** *(started)* | Naming notes on the stave by landmark, both clefs and ledger lines. Still to come: rhythm, and scrolling reads that never stop. |
 | 🧠 **Music theory** *(started)* | Four interactive lessons with a playable keyboard. More of the curriculum to follow. |
 | 🎤 **Vocal training** *(started)* | Live pitch feedback and sung answers are in. Still to come: interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
@@ -36,7 +36,7 @@ npm run dev
 
 ## What's built
 
-**Five courses across all four pillars**, all reachable from a Practice library that also lists what's still planned — hiding the unbuilt parts made a seventeen-level app look like a one-trick toy.
+**Six courses across all four pillars**, all reachable from a Practice library that also lists what's still planned — hiding the unbuilt parts made a seventeen-level app look like a one-trick toy.
 
 ### 🎧 Find the Note — seventeen levels across four stages
 
@@ -53,6 +53,9 @@ Name the distance between two notes: fifths and octaves first, then thirds, step
 
 ### 🎧 Chords — seven levels
 Major or minor first — the question people actually have when they hear a record — then diminished and augmented, the dominant seventh, the four sevenths, inversions, and finally wide voicings that arrive one note at a time. **Root, register and voicing are re-rolled every question**, because a fixed voicing lets you memorise one sound instead of learning what a quality is.
+
+### 🎧 Progressions — seven levels
+Name chords by their **role in the key**, not their quality. Knowing a chord is minor is useful; knowing it's the **vi** of the key you're in is what lets you work out a song, transpose it, and play along with something you've never heard. Two chords, then three, then four; the whole diatonic family; minor keys; and finally progressions lifted from real music. Every progression opens on home and the app says so — guessing the first chord is *finding the key*, a different skill, and asking for both at once would muddle them.
 
 ### 👁 Read the Note — seven levels
 Name notes on the stave, built on **landmarks** rather than "Every Good Boy Deserves Fudge" — mnemonics force you to count up one line at a time, a habit you then have to unlearn. Treble, then ledger lines, then bass, then both clefs unannounced. Answer with the letter keys.

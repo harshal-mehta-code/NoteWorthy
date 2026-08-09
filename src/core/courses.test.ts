@@ -4,6 +4,7 @@ import { generate } from './question';
 import { INTERVAL_LONG, INTERVAL_SHORT } from './intervals';
 import { LETTERS, indexToMidi, letterOf, staffStep } from './reading';
 import { buildChord } from './chords';
+import { REAL_PROGRESSIONS, voiceProgression } from './progressions';
 
 const times = (n: number) => Array.from({ length: n }, (_, i) => i);
 
@@ -250,5 +251,87 @@ describe('chords course', () => {
         }
       }
     }
+  });
+});
+
+describe('progressions course', () => {
+  const course = getCourse('progressions')!;
+
+  it('always starts on home, and never asks you to name it', () => {
+    for (const level of course.levels) {
+      for (const _ of times(150)) {
+        void _;
+        const q = generate(level, null, undefined, 60);
+        // One fewer answer than chords: the opening chord is given.
+        expect(q.correctIds).toHaveLength(q.chordSeq!.length - 1);
+        expect(q.answerLabel.startsWith(level.mode === 'minor' ? 'i' : 'I')).toBe(true);
+      }
+    }
+  });
+
+  it('only asks for chords the level declares', () => {
+    for (const level of course.levels.filter((l) => !l.useRealProgressions)) {
+      for (const _ of times(150)) {
+        void _;
+        const q = generate(level, null, undefined, 60);
+        for (const id of q.correctIds) expect(level.romanSet).toContain(id);
+        expect(q.options.map((o) => o.id)).toEqual(level.romanSet);
+      }
+    }
+  });
+
+  it('never repeats a chord back to back — a repeat wastes a slot', () => {
+    const level = course.levels.find((l) => (l.progressionLength ?? 0) >= 3 && !l.useRealProgressions)!;
+    for (const _ of times(200)) {
+      void _;
+      const ids = generate(level, null, undefined, 60).correctIds;
+      for (let i = 1; i < ids.length; i++) expect(ids[i]).not.toBe(ids[i - 1]);
+    }
+  });
+
+  it('voices every chord in a singable register', () => {
+    for (const level of course.levels) {
+      for (const _ of times(100)) {
+        void _;
+        for (const chord of generate(level, null, undefined, 60).chordSeq!) {
+          expect(Math.min(...chord)).toBeGreaterThanOrEqual(36);
+          expect(Math.max(...chord)).toBeLessThanOrEqual(84);
+        }
+      }
+    }
+  });
+
+  it('voice-leads smoothly rather than jumping between root positions', () => {
+    // Total movement between adjacent chords should be small; four blocks in
+    // root position would average far more than this.
+    const chords = voiceProgression(60, ['I', 'V', 'vi', 'IV']);
+    for (let i = 1; i < chords.length; i++) {
+      const movement = chords[i].reduce(
+        (sum, note) => sum + Math.min(...chords[i - 1].map((p) => Math.abs(p - note))),
+        0,
+      );
+      expect(movement).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it('builds each roman numeral on the right degree with the right quality', () => {
+    const [tonic, subdominant, dominant, submediant] = voiceProgression(60, ['I', 'IV', 'V', 'vi']);
+    const pcs = (c: number[]) => new Set(c.map((m) => ((m % 12) + 12) % 12));
+    expect(pcs(tonic)).toEqual(new Set([0, 4, 7])); // C E G
+    expect(pcs(subdominant)).toEqual(new Set([5, 9, 0])); // F A C
+    expect(pcs(dominant)).toEqual(new Set([7, 11, 2])); // G B D
+    expect(pcs(submediant)).toEqual(new Set([9, 0, 4])); // A C E
+  });
+
+  it('uses real progressions on the last level', () => {
+    const level = course.levels.find((l) => l.useRealProgressions)!;
+    const seen = new Set<string>();
+    for (const _ of times(200)) {
+      void _;
+      seen.add(generate(level, null, undefined, 60).correctIds.join('-'));
+    }
+    // Drawn from a fixed set, so there should be a handful, not hundreds.
+    expect(seen.size).toBeGreaterThan(2);
+    expect(seen.size).toBeLessThanOrEqual(REAL_PROGRESSIONS.length);
   });
 });

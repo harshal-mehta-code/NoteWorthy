@@ -39,7 +39,9 @@ export type LevelKind =
   /** A chord sounds. What kind of chord is it? */
   | 'chord-quality'
   /** A chord sounds. Which of its notes is at the bottom? */
-  | 'chord-inversion';
+  | 'chord-inversion'
+  /** A sequence of chords in a key. Name each by its role. */
+  | 'progression-id';
 
 /** Kinds that need the microphone. */
 export function isSingKind(kind: LevelKind): boolean {
@@ -118,6 +120,13 @@ export type Level = {
   chordInversions?: boolean;
   /** Sometimes arrive one note at a time rather than all together. */
   chordBroken?: boolean;
+
+  // --- progression levels only ------------------------------------------
+  romanSet?: import('./progressions').Roman[];
+  /** Chords per question, including the opening I. */
+  progressionLength?: number;
+  /** Draw from real-world progressions rather than generating. */
+  useRealProgressions?: boolean;
 };
 
 const MAJOR = DIATONIC.major;

@@ -5,6 +5,7 @@ import { STAGE_LABEL, findLevel } from '@/core/levels';
 import { getCourse, statKey, COURSES } from '@/core/courses';
 import { INTERVAL_LONG } from '@/core/intervals';
 import { CHORD_LONG, CHORD_ORDER, INVERSION_LABEL } from '@/core/chords';
+import { ROMAN, ROMAN_ORDER } from '@/core/progressions';
 import { indexToName } from '@/core/reading';
 import { degreeLabel, degreeNickname, degreeSolfege, type Deg, type Mode } from '@/core/music';
 import {
@@ -130,17 +131,27 @@ function observation(
         return CHORD_LONG[CHORD_ORDER[item]] ?? 'that chord';
       case 'chord-inversion':
         return `${INVERSION_LABEL[item]} position`;
+      case 'progression-id':
+        return ROMAN_ORDER[item] ?? 'that chord';
       default:
         return `${degreeLabel(item, mode)} · ${degreeSolfege(item)}`;
     }
   };
-  const nickname = (item: number) =>
-    kind === 'interval-id' ||
-    kind === 'read-note' ||
-    kind === 'chord-quality' ||
-    kind === 'chord-inversion'
-      ? ''
-      : ` — ${degreeNickname(item, mode)}`;
+  const nickname = (item: number) => {
+    if (kind === 'progression-id') {
+      const roman = ROMAN_ORDER[item];
+      return roman ? ` — ${ROMAN[roman].role}` : '';
+    }
+    if (
+      kind === 'interval-id' ||
+      kind === 'read-note' ||
+      kind === 'chord-quality' ||
+      kind === 'chord-inversion'
+    ) {
+      return '';
+    }
+    return ` — ${degreeNickname(item, mode)}`;
+  };
 
   const weakest = weakestDegree(stats, 5);
 

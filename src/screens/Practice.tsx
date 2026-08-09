@@ -64,6 +64,7 @@ export default function Practice() {
     config.kind !== 'read-note' &&
     config.kind !== 'chord-quality' &&
     config.kind !== 'chord-inversion';
+  const progression = config.kind === 'progression-id';
   const singing = isSingKind(config.kind);
   const reading = config.kind === 'read-note';
 
@@ -147,6 +148,24 @@ export default function Practice() {
         return;
       }
 
+      if (q.chordSeq) {
+        const gapMs = 1000;
+        q.chordSeq.forEach((chord, i) => {
+          later(() => {
+            setPlayingIndex(i);
+            playSequence(chord, 0, 0.92, 0.19);
+          }, i * gapMs);
+        });
+        later(
+          () => {
+            setPlayingIndex(-1);
+            onDone();
+          },
+          q.chordSeq.length * gapMs,
+        );
+        return;
+      }
+
       if (q.simultaneous) {
         playSequence(midis, 0, 1.3, 0.24);
         later(() => {
@@ -190,7 +209,7 @@ export default function Practice() {
         setKey(tonic);
       }
 
-      const q = generate(config, prevItem.current, weights);
+      const q = generate(config, prevItem.current, weights, tonic.tonic);
       prevItem.current =
         q.target ?? (q.kind === 'read-note' ? (q.staff?.index ?? null) : null) ??
         q.sequence[q.sequence.length - 1] ?? null;
@@ -264,6 +283,9 @@ export default function Practice() {
         playSequence(heard, q.simultaneous ? 0 : 0.4, 0.8, 0.24);
       } else if (q.kind === 'chord-quality' || q.kind === 'chord-inversion') {
         playSequence(heard, 0, 1.1, 0.22);
+      } else if (q.chordSeq) {
+        // Land on home, so the round has somewhere to rest.
+        playSequence(q.chordSeq[q.chordSeq.length - 1], 0, 1.2, 0.2);
       } else {
         playCorrectSimple(tonic, q.kind === 'which-is-home' ? homeMidi : heard[0]);
       }
@@ -309,6 +331,11 @@ export default function Practice() {
       playSequence(buildChord(root, answer[0] as ChordQuality), 0, 0.9, 0.22);
       later(() => playSequence(heard, 0, 1.1, 0.22), 1350);
       holdMs = 3200;
+    } else if (q.chordSeq) {
+      // Replay the whole progression, a little faster, now that you know
+      // what it was — the sequence is the thing to re-hear, not one chord.
+      q.chordSeq.forEach((chord, i) => later(() => playSequence(chord, 0, 0.75, 0.19), i * 800));
+      holdMs = q.chordSeq.length * 800 + 1200;
     } else if (q.kind === 'chord-inversion') {
       playSequence(heard, 0.32, 0.85, 0.22); // broken, so the bass is audible
       later(() => playSequence(heard, 0, 1.1, 0.22), 1800);
@@ -494,6 +521,15 @@ export default function Practice() {
               tone={phase === 'correct' ? 'correct' : phase === 'wrong' ? 'wrong' : 'neutral'}
             />
           </div>
+        ) : progression && question?.chordSeq ? (
+          <ProgressionRow
+            count={question.chordSeq.length}
+            playing={playingIndex}
+            picked={slots}
+            correctIds={question.correctIds}
+            revealed={revealed}
+            homeLabel={config.mode === 'minor' ? 'i' : 'I'}
+          />
         ) : multiNote ? (
           <SequenceOrbs
             count={question?.sequence.length ?? 3}
@@ -555,7 +591,7 @@ export default function Practice() {
         </div>
       </div>
 
-      {multiSlot && question && (
+      {multiSlot && question && !progression && (
         <SlotRow
           total={totalSlots}
           picked={slots}
@@ -664,6 +700,26 @@ function HelpBody({
         <p>
           Listen for <strong className="text-ink">width</strong> first, then colour. Is it a step, a
           reach, or a leap? Only then ask whether it sounds bright or shaded.
+        </p>
+      </>
+    );
+  }
+  if (kind === 'progression-id') {
+    return (
+      <>
+        <p>
+          Every progression here starts on <strong className="text-ink">home</strong> — you're never
+          asked to guess that one. Working out the key is a different skill, and asking for both at
+          once would muddle them.
+        </p>
+        <p>
+          Listen to where each chord sits <em>relative to home</em>. <strong className="text-ink">IV</strong>{' '}
+          lifts and brightens. <strong className="text-ink">V</strong> pulls hard and wants to
+          resolve. <strong className="text-ink">vi</strong> is the sad one — a minor chord inside a
+          major key.
+        </p>
+        <p className="text-subtle">
+          This is the skill that lets you play along with something you've never heard.
         </p>
       </>
     );
@@ -789,6 +845,8 @@ function promptFor(q: Question | null, filled: number, total: number): string {
       return 'What kind of chord?';
     case 'chord-inversion':
       return "Which note is at the bottom?";
+    case 'progression-id':
+      return total > 1 ? `Name chord ${filled + 2}` : 'What was the second chord?';
     default:
       return total > 1 ? `Name note ${filled + 1} of ${total}` : 'Which note was that?';
   }
@@ -851,6 +909,76 @@ function SlotRow({
           </svg>
         </button>
       )}
+    </div>
+  );
+}
+
+/** The chords of a progression, with the given opening chord marked. */
+function ProgressionRow({
+  count,
+  playing,
+  picked,
+  correctIds,
+  revealed,
+  homeLabel,
+}: {
+  count: number;
+  playing: number;
+  picked: string[];
+  correctIds: string[];
+  revealed: boolean;
+  homeLabel: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {Array.from({ length: count }, (_, i) => {
+        const active = playing === i;
+        if (i === 0) {
+          return (
+            <div
+              key={i}
+              className={`grid h-[62px] min-w-[62px] place-items-center rounded-2xl border px-2 transition ${
+                active ? 'border-accent bg-accent-wash text-accent' : 'border-line text-subtle'
+              }`}
+            >
+              <span className="text-lg font-bold">{homeLabel}</span>
+              <span className="label text-[8px]">given</span>
+            </div>
+          );
+        }
+
+        const answer = picked[i - 1];
+        const right = revealed && answer === correctIds[i - 1];
+        const wrong = revealed && answer !== undefined && answer !== correctIds[i - 1];
+
+        // Once revealed the box always shows the *right* chord, in the
+        // right colour. Tinting the correct answer red because you missed
+        // it reads as "vi is wrong", which is the opposite of the lesson;
+        // your pick goes underneath instead.
+        const tone = revealed
+          ? right
+            ? 'border-correct bg-correct-wash text-correct'
+            : 'border-correct/60 text-correct'
+          : active
+            ? 'border-accent bg-accent-wash text-accent'
+            : answer
+              ? 'border-accent-dim text-accent'
+              : 'border-line border-dashed text-subtle';
+
+        return (
+          <div
+            key={i}
+            className={`grid h-[62px] min-w-[62px] place-items-center rounded-2xl border px-2 transition ${tone} ${
+              active ? 'scale-105' : ''
+            }`}
+          >
+            <span className="text-lg font-bold">
+              {revealed ? correctIds[i - 1] : (answer ?? '?')}
+            </span>
+            {wrong && <span className="label text-[8px] text-wrong">you said {answer}</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }

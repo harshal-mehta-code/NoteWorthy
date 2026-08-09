@@ -12,6 +12,7 @@ import { FIND_THE_NOTE } from './levels';
 import { INTERVALS } from './intervals';
 import { NOTE_READING } from './reading';
 import { CHORDS } from './chords';
+import { PROGRESSIONS } from './progressions';
 import { LESSONS } from '@/content/lessons';
 
 export type Pillar = 'ear' | 'reading' | 'theory' | 'voice';
@@ -86,6 +87,14 @@ export const COURSES: Course[] = [
     levels: CHORDS,
   },
   {
+    id: 'progressions',
+    pillar: 'ear',
+    name: 'Progressions',
+    blurb: 'Name chords by their role in the key. This is what lets you work out a song.',
+    status: 'ready',
+    levels: PROGRESSIONS,
+  },
+  {
     id: 'note-reading',
     pillar: 'reading',
     name: 'Read the Note',
@@ -110,15 +119,6 @@ export const COURSES: Course[] = [
     status: 'planned',
     levels: [],
     planNote: 'Single sung notes are already in Find the Note, stage 4.',
-  },
-  {
-    id: 'progressions',
-    pillar: 'ear',
-    name: 'Progressions',
-    blurb: 'Hear a sequence of chords and name them by their role in the key.',
-    status: 'planned',
-    levels: [],
-    planNote: 'Needs chord quality first — that course is now live.',
   },
   {
     id: 'melodic-dictation',

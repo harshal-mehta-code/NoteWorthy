@@ -9,6 +9,13 @@
 import { isSingKind, type Level, type LevelKind } from './levels';
 import { INTERVAL_CHARACTER, INTERVAL_LONG, INTERVAL_SHORT } from './intervals';
 import {
+  REAL_PROGRESSIONS,
+  ROMAN,
+  romanIndex,
+  voiceProgression,
+  type Roman,
+} from './progressions';
+import {
   CHORD_CHARACTER,
   CHORD_LONG,
   CHORD_ORDER,
@@ -55,6 +62,8 @@ export type Question = {
   simultaneous?: boolean;
   /** What to draw, for reading questions. */
   staff?: { index: number; clef: Clef };
+  /** Chords to play in order, for progression questions. */
+  chordSeq?: number[][];
   /** Shown as the headline in feedback. */
   answerLabel: string;
   /** One line under it, explaining *why*. */
@@ -76,12 +85,14 @@ export function generate(
   level: Level,
   previous: Deg | null,
   weights?: Map<Deg, number>,
+  tonic?: number,
 ): Question {
   if (isSingKind(level.kind)) return sing(level, previous, weights);
   if (level.kind === 'interval-id') return intervalId(level);
   if (level.kind === 'read-note') return readNote(level);
   if (level.kind === 'chord-quality') return chordQuality(level);
   if (level.kind === 'chord-inversion') return chordInversion(level);
+  if (level.kind === 'progression-id') return progressionId(level, tonic ?? 60);
 
   switch (level.kind) {
     case 'home-or-not':
@@ -269,6 +280,50 @@ function intervalId(level: Level): Question {
 }
 
 /**
+ * A progression in a key, named by role.
+ *
+ * Always opens on I, and the UI says so — guessing the first chord is
+ * "find the key", a different and much harder skill, and mixing it in would
+ * make every question test two things at once.
+ */
+function progressionId(level: Level, tonic: number): Question {
+  const set = (level.romanSet ?? ['IV', 'V']) as Roman[];
+  const minor = level.mode === 'minor';
+  const home: Roman = minor ? 'i' : 'I';
+  const length = level.progressionLength ?? 2;
+
+  let romans: Roman[];
+  let flavour = '';
+
+  if (level.useRealProgressions) {
+    const choice = pickRandom(REAL_PROGRESSIONS);
+    romans = choice.romans;
+    flavour = ` — ${choice.name}`;
+  } else {
+    romans = [home];
+    for (let i = 1; i < length; i++) {
+      // No immediate repeats: a chord repeating tells you nothing new, and
+      // it wastes one of only two or three slots.
+      const options = set.filter((r) => r !== romans[romans.length - 1]);
+      romans.push(pickRandom(options.length ? options : set));
+    }
+  }
+
+  const answers = romans.slice(1);
+
+  return {
+    kind: 'progression-id',
+    sequence: [],
+    octaveUp: [],
+    chordSeq: voiceProgression(tonic, romans),
+    options: set.map((r) => ({ id: r, primary: r })),
+    correctIds: answers,
+    answerLabel: romans.join('  →  ') + flavour,
+    explain: answers.map((r) => `${r} is ${ROMAN[r].role}`).join('. '),
+  };
+}
+
+/**
  * A chord sounds, and you name its quality.
  *
  * Root, register, voicing and inversion are all re-rolled every question.
@@ -384,6 +439,10 @@ export function blamedDegrees(q: Question, answer: string[]): Deg[] {
   // Chords key on their position in CHORD_ORDER, or on the inversion index.
   if (q.kind === 'chord-quality') return [CHORD_ORDER.indexOf(q.correctIds[0] as ChordQuality)];
   if (q.kind === 'chord-inversion') return [Number(q.correctIds[0])];
+  if (q.kind === 'progression-id') {
+    const wrong = q.correctIds.filter((id, i) => answer[i] !== id);
+    return (wrong.length ? wrong : q.correctIds).map((r) => romanIndex(r as Roman));
+  }
   if (q.kind === 'which-is-home') {
     const picked = degreeForOption(q, answer[0] ?? '0');
     return picked === null ? [q.sequence[0]] : [picked];
