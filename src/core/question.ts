@@ -8,6 +8,7 @@
 
 import { isSingKind, type Level, type LevelKind } from './levels';
 import { INTERVAL_CHARACTER, INTERVAL_LONG, INTERVAL_SHORT } from './intervals';
+import { buildPhrase } from './singing';
 import {
   REAL_PROGRESSIONS,
   ROMAN,
@@ -116,6 +117,8 @@ export function generate(
  * than imitation.
  */
 function sing(level: Level, previous: Deg | null, weights?: Map<Deg, number>): Question {
+  if (level.kind === 'sing-phrase') return singPhrase(level);
+
   const target = level.kind === 'sing-home' ? 0 : pickDegree(level.degrees, previous, weights);
   const name = `${degreeLabel(target, level.mode)} · ${degreeSolfege(target)}`;
 
@@ -135,6 +138,33 @@ function sing(level: Level, previous: Deg | null, weights?: Map<Deg, number>): Q
       level.kind === 'sing-home'
         ? 'Any octave counts — sing it where it sits comfortably.'
         : `${degreeNickname(target, level.mode)}. Any octave counts.`,
+  };
+}
+
+/**
+ * A phrase to sing back. Unlike every other sung level this has no single
+ * `target` — the answer is a line, graded a note at a time by PhraseGrader.
+ */
+function singPhrase(level: Level): Question {
+  const sequence = buildPhrase(
+    level.degrees,
+    level.sequenceLength,
+    level.phraseShape ?? 'free',
+  );
+  const labels = sequence.map((d) => degreeLabel(d, level.mode));
+  const shape = level.phraseShape ?? 'free';
+
+  return {
+    kind: 'sing-phrase',
+    sequence,
+    octaveUp: sequence.map(() => false),
+    options: [],
+    correctIds: [],
+    answerLabel: labels.join(' – '),
+    explain:
+      shape === 'free'
+        ? 'Any octave counts. Sing it as one line rather than note by note.'
+        : 'Keep it moving — a run you have to stop and find is not a run yet.',
   };
 }
 
@@ -422,6 +452,9 @@ export function degreeForOption(q: Question, optionId: string): Deg | null {
 
 /** Degrees to credit or blame, for sing levels. */
 export function singDegrees(q: Question): Deg[] {
+  // A phrase has no single target — every note in it is fair game for blame,
+  // and the panel reports which ones were actually missed.
+  if (q.kind === 'sing-phrase') return q.sequence;
   return q.target === undefined ? [] : [q.target];
 }
 

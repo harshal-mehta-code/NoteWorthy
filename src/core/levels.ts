@@ -32,6 +32,8 @@ export type LevelKind =
   | 'sing-back'
   /** Sing a named note of the key, with nothing to copy. */
   | 'sing-degree'
+  /** Sing back a whole phrase, note by note. */
+  | 'sing-phrase'
   /** Two notes play. How far apart were they? */
   | 'interval-id'
   /** A note is drawn on a stave. What is it called? */
@@ -45,7 +47,17 @@ export type LevelKind =
 
 /** Kinds that need the microphone. */
 export function isSingKind(kind: LevelKind): boolean {
-  return kind === 'sing-home' || kind === 'sing-back' || kind === 'sing-degree';
+  return (
+    kind === 'sing-home' ||
+    kind === 'sing-back' ||
+    kind === 'sing-degree' ||
+    kind === 'sing-phrase'
+  );
+}
+
+/** Sung levels answered a note at a time rather than with one held pitch. */
+export function isPhraseKind(kind: LevelKind): boolean {
+  return kind === 'sing-phrase';
 }
 
 export const INTRO_LABEL: Record<IntroMode, string> = {
@@ -120,6 +132,14 @@ export type Level = {
   chordInversions?: boolean;
   /** Sometimes arrive one note at a time rather than all together. */
   chordBroken?: boolean;
+
+  // --- sing-phrase only --------------------------------------------------
+  /** Random notes, a scale run, or a run that turns around at the top. */
+  phraseShape?: 'free' | 'run' | 'turn';
+  /** Seconds between notes when the phrase is played. Speed is the agility axis. */
+  phraseGap?: number;
+  /** How long each sung note must hold before it counts. */
+  phraseHoldMs?: number;
 
   // --- progression levels only ------------------------------------------
   romanSet?: import('./progressions').Roman[];

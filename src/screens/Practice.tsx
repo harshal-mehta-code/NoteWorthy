@@ -2,15 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Dots, IconButton, Screen, Sheet } from '@/components/ui';
 import { SingPanel, type SingOutcome } from '@/components/SingPanel';
+import { PhrasePanel, type PhraseOutcome } from '@/components/PhrasePanel';
 import { Staff } from '@/components/Staff';
-import { INTRO_HELP, INTRO_LABEL, findLevel, isSingKind } from '@/core/levels';
+import { INTRO_HELP, INTRO_LABEL, findLevel, isPhraseKind, isSingKind } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { getCourse, COURSES } from '@/core/courses';
 import { buildWarmup, planBreakdown, type PlanStep } from '@/core/warmup';
 import { isUsable, octaveShiftFor, shiftIntoRange } from '@/core/range';
 import { directionLabel } from '@/core/intervals';
 import { buildChord, type ChordQuality } from '@/core/chords';
-import { KEYS, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
+import { KEYS, degreeLabel, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
+import type { PhraseSlot } from '@/core/phrase';
 import {
   blamedDegrees,
   columnsFor,
@@ -88,6 +90,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     config.kind !== 'chord-inversion';
   const progression = config.kind === 'progression-id';
   const singing = isSingKind(config.kind);
+  const phrase = isPhraseKind(config.kind);
   const reading = config.kind === 'read-note';
 
   const rollKey = useCallback(
@@ -116,6 +119,8 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const [slots, setSlots] = useState<string[]>([]);
   const [streak, setStreak] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  /** Per-note results of a sung phrase, kept so the reveal can show them. */
+  const [phraseSlots, setPhraseSlots] = useState<PhraseSlot[] | null>(null);
 
   const score = useRef({ correct: 0, skipped: 0, bestStreak: 0, misses: new Map<number, number>() });
   const timers = useRef<number[]>([]);
@@ -183,7 +188,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   );
 
   const playQuestion = useCallback(
-    (q: Question, tonic: number, onDone: () => void) => {
+    (q: Question, tonic: number, onDone: () => void, gap = SEQUENCE_GAP) => {
       const midis = midisFor(q, tonic);
       setPlayingIndex(0);
 
@@ -231,14 +236,16 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         return;
       }
 
-      playSequence(midis, SEQUENCE_GAP, 0.7, 0.26);
-      midis.forEach((_, i) => later(() => setPlayingIndex(i), i * SEQUENCE_GAP * 1000 + 60));
+      // A fast run needs shorter notes as well as a shorter gap, or they
+      // overlap into a smear instead of sounding like a run.
+      playSequence(midis, gap, Math.min(0.7, gap * 1.15), 0.26);
+      midis.forEach((_, i) => later(() => setPlayingIndex(i), i * gap * 1000 + 60));
       later(
         () => {
           setPlayingIndex(-1);
           onDone();
         },
-        (midis.length - 1) * SEQUENCE_GAP * 1000 + 400,
+        (midis.length - 1) * gap * 1000 + 400,
       );
     },
     [midisFor],
@@ -249,6 +256,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
       clearTimers();
       answered.current = false;
       setSlots([]);
+      setPhraseSlots(null);
 
       const thisStep = plan[Math.min(questionIndex, plan.length - 1)];
       const thisCourse = getCourse(thisStep.courseId) ?? COURSES[0];
@@ -278,7 +286,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
 
       const startPlaying = () => {
         setPhase('playing');
-        playQuestion(q, tonic.tonic, () => setPhase('question'));
+        playQuestion(q, tonic.tonic, () => setPhase('question'), cfg.phraseGap ?? SEQUENCE_GAP);
       };
 
       if (cfg.drone) {
@@ -450,11 +458,61 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     later(advance, 2200);
   }
 
+  /**
+   * A sung phrase is graded per note, but scored as one question: getting
+   * four of five right is not a pass. Partial credit would let someone climb
+   * the ladder while never once singing a whole line correctly.
+   */
+  function handlePhrase(outcome: PhraseOutcome) {
+    if (!question || answered.current) return;
+    answered.current = true;
+    const tonic = keyRef.current.tonic;
+
+    if (outcome.kind === 'skipped') {
+      score.current.skipped += 1;
+      setPhase('wrong');
+      later(advance, 900);
+      return;
+    }
+
+    const missed = outcome.slots
+      .map((slot, i) => ({ slot, deg: question.sequence[i] }))
+      .filter(({ slot }) => slot.state !== 'hit')
+      .map(({ deg }) => deg);
+    const allHit = missed.length === 0;
+
+    recordAnswer(step.courseId, step.levelId, allHit, allHit ? question.sequence : missed);
+    setPhraseSlots(outcome.slots);
+
+    if (allHit) {
+      const next = streak + 1;
+      setStreak(next);
+      score.current.correct += 1;
+      score.current.bestStreak = Math.max(score.current.bestStreak, next);
+      setPhase('correct');
+      playCorrect(tonic, degreeToMidi(tonic, question.sequence[question.sequence.length - 1]), next, config.mode);
+      later(advance, HOLD_CORRECT_MS + 400);
+      return;
+    }
+
+    setStreak(0);
+    setPhase('wrong');
+    for (const deg of missed) {
+      score.current.misses.set(deg, (score.current.misses.get(deg) ?? 0) + 1);
+    }
+    // Play the phrase back correctly. Hearing the line you were reaching for,
+    // right after your attempt, is the correction.
+    const gap = config.phraseGap ?? SEQUENCE_GAP;
+    playSequence(midisFor(question, tonic), gap, Math.min(0.8, gap * 1.3), 0.26);
+    later(advance, question.sequence.length * gap * 1000 + 1800);
+  }
+
   function replayReference() {
     if (!question) return;
     const tonic = keyRef.current.tonic;
     if (question.sequence.length) {
-      playSequence(midisFor(question, tonic), SEQUENCE_GAP, 1.0, 0.26);
+      const gap = config.phraseGap ?? SEQUENCE_GAP;
+      playSequence(midisFor(question, tonic), gap, Math.min(1.0, gap * 1.3), 0.26);
     } else {
       playKeyIntro(tonic, 'home', config.mode);
     }
@@ -504,7 +562,12 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   function replay() {
     if (phase !== 'question' || !question || reading) return;
     setPhase('playing');
-    playQuestion(question, keyRef.current.tonic, () => setPhase('question'));
+    playQuestion(
+      question,
+      keyRef.current.tonic,
+      () => setPhase('question'),
+      config.phraseGap ?? SEQUENCE_GAP,
+    );
   }
 
   useEffect(() => {
@@ -583,14 +646,26 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 py-4 text-center">
         {singing && question && phase === 'question' ? (
           <div className="w-full">
-            <SingPanel
-              key={`${index}-${question.target}`}
-              targetMidi={singTargetMidi(question, keyRef.current.tonic)}
-              targetLabel={question.answerLabel}
-              tolerance={config.singTolerance}
-              onOutcome={handleSing}
-              onReplayReference={replayReference}
-            />
+            {phrase ? (
+              <PhrasePanel
+                key={index}
+                targets={midisFor(question, keyRef.current.tonic)}
+                labels={question.sequence.map((d) => degreeLabel(d, config.mode))}
+                toleranceCents={config.singTolerance}
+                holdMs={config.phraseHoldMs ?? 260}
+                onOutcome={handlePhrase}
+                onReplay={replay}
+              />
+            ) : (
+              <SingPanel
+                key={`${index}-${question.target}`}
+                targetMidi={singTargetMidi(question, keyRef.current.tonic)}
+                targetLabel={question.answerLabel}
+                tolerance={config.singTolerance}
+                onOutcome={handleSing}
+                onReplayReference={replayReference}
+              />
+            )}
             {/* Only worth saying once, and only to someone it would help. */}
             {!isUsable(vocalRange) && (
               <p className="mt-3 text-center text-[13px] leading-snug text-subtle">
@@ -622,6 +697,18 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
             revealed={revealed}
             homeLabel={config.mode === 'minor' ? 'i' : 'I'}
           />
+        ) : phrase && question ? (
+          // Never orbs for a phrase: numbered positions sitting above the
+          // answer chips read as note names, which is exactly the wrong
+          // thing on a screen about note names. Show the notes themselves,
+          // lighting up as they play — and nothing at all once answered,
+          // because the chips below already say what happened.
+          revealed ? null : (
+            <PhraseRow
+              labels={question.sequence.map((d) => degreeLabel(d, config.mode))}
+              playing={playingIndex}
+            />
+          )
         ) : multiNote ? (
           <SequenceOrbs
             count={question?.sequence.length ?? 3}
@@ -670,12 +757,36 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         <div className="flex min-h-[66px] max-w-[32ch] flex-col items-center justify-center gap-1.5">
           {revealed && question && (
             <>
+              {/* For a phrase, which notes landed matters more than the
+                  pass/fail — "you got four of five, the third was flat" is
+                  the useful sentence. */}
+              {phraseSlots ? (
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {phraseSlots.map((slot, i) => (
+                    <span
+                      key={i}
+                      className={`tnum rounded-lg border px-2.5 py-1 text-[15px] font-bold ${
+                        slot.state === 'hit'
+                          ? 'border-correct bg-correct-wash text-correct'
+                          : 'border-wrong bg-wrong-wash text-wrong'
+                      }`}
+                      title={
+                        slot.cents === null
+                          ? 'not sung'
+                          : `${slot.cents > 0 ? '+' : ''}${Math.round(slot.cents)} cents`
+                      }
+                    >
+                      {degreeLabel(question.sequence[i], config.mode)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <p
                 className={`text-xl font-bold tracking-tight ${
                   phase === 'correct' ? 'text-correct' : 'text-wrong'
                 }`}
               >
-                {question.answerLabel}
+                {phraseSlots ? phraseVerdict(phraseSlots) : question.answerLabel}
               </p>
               <p className="text-[13px] leading-snug text-subtle">{question.explain}</p>
             </>
@@ -880,6 +991,24 @@ function HelpBody({
       </>
     );
   }
+  if (kind === 'sing-phrase') {
+    return (
+      <>
+        <p>
+          The phrase plays, then stops. Sing the whole thing back as{' '}
+          <strong className="text-ink">one line</strong> — the boxes fill as you go.
+        </p>
+        <p>
+          They fill with whatever you actually sang, right or wrong, so you are never stuck part
+          way through. A note counts once you hold it for a moment; sliding past it doesn't.
+        </p>
+        <p className="text-subtle">
+          Any octave counts. Getting most of them right still scores the question as missed — the
+          skill is the whole line, not the notes in isolation.
+        </p>
+      </>
+    );
+  }
   if (kind === 'sing-home' || kind === 'sing-back' || kind === 'sing-degree') {
     return (
       <>
@@ -915,6 +1044,24 @@ function HelpBody({
   );
 }
 
+/** A phrase verdict that says what actually happened, not just pass/fail. */
+function phraseVerdict(slots: PhraseSlot[]): string {
+  const hits = slots.filter((s) => s.state === 'hit').length;
+  if (hits === slots.length) return 'All of it';
+  if (hits === 0) return 'Not this time';
+
+  const missed = slots.filter((s) => s.state !== 'hit');
+  // If every miss leant the same way, that's a habit worth naming.
+  const sung = missed.filter((s) => s.cents !== null);
+  if (sung.length === missed.length && sung.every((s) => s.cents! > 0)) {
+    return `${hits} of ${slots.length} — the rest sharp`;
+  }
+  if (sung.length === missed.length && sung.every((s) => s.cents! < 0)) {
+    return `${hits} of ${slots.length} — the rest flat`;
+  }
+  return `${hits} of ${slots.length}`;
+}
+
 function promptFor(q: Question | null, filled: number, total: number): string {
   switch (q?.kind) {
     case 'sing-home':
@@ -923,6 +1070,8 @@ function promptFor(q: Question | null, filled: number, total: number): string {
       return 'Sing that note back.';
     case 'sing-degree':
       return 'Find it and sing it.';
+    case 'sing-phrase':
+      return 'Sing the whole line back.';
     case 'home-or-not':
       return 'Was that home?';
     case 'rest-or-move':
@@ -1068,6 +1217,27 @@ function ProgressionRow({
               {revealed ? correctIds[i - 1] : (answer ?? '?')}
             </span>
             {wrong && <span className="label text-[8px] text-wrong">you said {answer}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The notes of a phrase, lighting up one at a time as it plays. */
+function PhraseRow({ labels, playing }: { labels: string[]; playing: number }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {labels.map((label, i) => {
+        const active = playing === i;
+        return (
+          <div
+            key={i}
+            className={`grid h-[58px] min-w-[54px] place-items-center rounded-2xl border bg-surface px-2 transition ${
+              active ? 'scale-105 border-accent text-accent' : 'border-line text-subtle'
+            }`}
+          >
+            <span className="tnum text-lg font-bold">{label}</span>
           </div>
         );
       })}

@@ -13,6 +13,7 @@ import { INTERVALS } from './intervals';
 import { NOTE_READING } from './reading';
 import { CHORDS } from './chords';
 import { PROGRESSIONS } from './progressions';
+import { SING_PHRASES } from './singing';
 import { LESSONS } from '@/content/lessons';
 
 export type Pillar = 'ear' | 'reading' | 'theory' | 'voice';
@@ -115,10 +116,9 @@ export const COURSES: Course[] = [
     id: 'sing-phrases',
     pillar: 'voice',
     name: 'Sing a Phrase',
-    blurb: 'Sing back two notes, then three. Melodic dictation with your voice.',
-    status: 'planned',
-    levels: [],
-    planNote: 'Single sung notes are already in Find the Note, stage 4.',
+    blurb: 'Sing back two notes, then three, then whole runs. Agility, by voice.',
+    status: 'ready',
+    levels: SING_PHRASES,
   },
   {
     id: 'melodic-dictation',
