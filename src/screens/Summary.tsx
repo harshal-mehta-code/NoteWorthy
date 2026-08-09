@@ -4,6 +4,7 @@ import { Button, Card, Label, Screen } from '@/components/ui';
 import { STAGE_LABEL, findLevel } from '@/core/levels';
 import { getCourse, statKey, COURSES } from '@/core/courses';
 import { INTERVAL_LONG } from '@/core/intervals';
+import { CHORD_LONG, CHORD_ORDER, INVERSION_LABEL } from '@/core/chords';
 import { indexToName } from '@/core/reading';
 import { degreeLabel, degreeNickname, degreeSolfege, type Deg, type Mode } from '@/core/music';
 import {
@@ -119,14 +120,27 @@ function observation(
   kind: string,
 ): string {
   /** Items mean different things in different courses. */
-  const name = (item: number) =>
-    kind === 'interval-id'
-      ? INTERVAL_LONG[item]
-      : kind === 'read-note'
-        ? indexToName(item)
-        : `${degreeLabel(item, mode)} · ${degreeSolfege(item)}`;
+  const name = (item: number) => {
+    switch (kind) {
+      case 'interval-id':
+        return INTERVAL_LONG[item];
+      case 'read-note':
+        return indexToName(item);
+      case 'chord-quality':
+        return CHORD_LONG[CHORD_ORDER[item]] ?? 'that chord';
+      case 'chord-inversion':
+        return `${INVERSION_LABEL[item]} position`;
+      default:
+        return `${degreeLabel(item, mode)} · ${degreeSolfege(item)}`;
+    }
+  };
   const nickname = (item: number) =>
-    kind === 'interval-id' || kind === 'read-note' ? '' : ` — ${degreeNickname(item, mode)}`;
+    kind === 'interval-id' ||
+    kind === 'read-note' ||
+    kind === 'chord-quality' ||
+    kind === 'chord-inversion'
+      ? ''
+      : ` — ${degreeNickname(item, mode)}`;
 
   const weakest = weakestDegree(stats, 5);
 

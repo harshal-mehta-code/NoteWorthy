@@ -11,6 +11,7 @@ import type { Level } from './levels';
 import { FIND_THE_NOTE } from './levels';
 import { INTERVALS } from './intervals';
 import { NOTE_READING } from './reading';
+import { CHORDS } from './chords';
 import { LESSONS } from '@/content/lessons';
 
 export type Pillar = 'ear' | 'reading' | 'theory' | 'voice';
@@ -39,6 +40,7 @@ export type CourseId =
   | 'theory'
   | 'melodic-dictation'
   | 'chord-quality'
+  | 'progressions'
   | 'rhythm-reading'
   | 'scroll-reading'
   | 'sing-phrases';
@@ -76,6 +78,14 @@ export const COURSES: Course[] = [
     levels: INTERVALS,
   },
   {
+    id: 'chord-quality',
+    pillar: 'ear',
+    name: 'Chords',
+    blurb: 'Major or minor, then sevenths and inversions.',
+    status: 'ready',
+    levels: CHORDS,
+  },
+  {
     id: 'note-reading',
     pillar: 'reading',
     name: 'Read the Note',
@@ -102,6 +112,15 @@ export const COURSES: Course[] = [
     planNote: 'Single sung notes are already in Find the Note, stage 4.',
   },
   {
+    id: 'progressions',
+    pillar: 'ear',
+    name: 'Progressions',
+    blurb: 'Hear a sequence of chords and name them by their role in the key.',
+    status: 'planned',
+    levels: [],
+    planNote: 'Needs chord quality first — that course is now live.',
+  },
+  {
     id: 'melodic-dictation',
     pillar: 'ear',
     name: 'Melodies',
@@ -109,14 +128,6 @@ export const COURSES: Course[] = [
     status: 'planned',
     levels: [],
     planNote: 'Two- and three-note phrases already appear in Find the Note, stage 3.',
-  },
-  {
-    id: 'chord-quality',
-    pillar: 'ear',
-    name: 'Chords',
-    blurb: 'Major or minor, then sevenths, inversions and progressions.',
-    status: 'planned',
-    levels: [],
   },
   {
     id: 'rhythm-reading',

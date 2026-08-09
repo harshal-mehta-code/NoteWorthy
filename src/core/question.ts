@@ -9,6 +9,16 @@
 import { isSingKind, type Level, type LevelKind } from './levels';
 import { INTERVAL_CHARACTER, INTERVAL_LONG, INTERVAL_SHORT } from './intervals';
 import {
+  CHORD_CHARACTER,
+  CHORD_LONG,
+  CHORD_ORDER,
+  CHORD_SHORT,
+  INVERSION_LABEL,
+  INVERSION_LONG,
+  buildChord,
+  type ChordQuality,
+} from './chords';
+import {
   LETTERS,
   indexToMidi,
   indexToName,
@@ -70,6 +80,8 @@ export function generate(
   if (isSingKind(level.kind)) return sing(level, previous, weights);
   if (level.kind === 'interval-id') return intervalId(level);
   if (level.kind === 'read-note') return readNote(level);
+  if (level.kind === 'chord-quality') return chordQuality(level);
+  if (level.kind === 'chord-inversion') return chordInversion(level);
 
   switch (level.kind) {
     case 'home-or-not':
@@ -256,6 +268,61 @@ function intervalId(level: Level): Question {
   };
 }
 
+/**
+ * A chord sounds, and you name its quality.
+ *
+ * Root, register, voicing and inversion are all re-rolled every question.
+ * Holding any of them fixed lets you memorise one particular sound rather
+ * than learn what the quality is, which is how chord training usually goes
+ * quietly wrong.
+ */
+function chordQuality(level: Level): Question {
+  const set = level.chordSet ?? ['maj', 'min'];
+  const quality = pickRandom(set);
+  const root = 48 + Math.floor(Math.random() * 13); // C3-C4
+  const inversion = level.chordInversions ? Math.floor(Math.random() * 3) : 0;
+  const spread = level.chordBroken ? Math.random() < 0.5 : false;
+  const broken = level.chordBroken ? Math.random() < 0.5 : false;
+
+  return {
+    kind: 'chord-quality',
+    sequence: [],
+    octaveUp: [],
+    midis: buildChord(root, quality, inversion, spread),
+    simultaneous: !broken,
+    options: set.map((q) => ({ id: q, primary: CHORD_SHORT[q] })),
+    correctIds: [quality],
+    answerLabel: CHORD_LONG[quality],
+    explain: CHORD_CHARACTER[quality],
+  };
+}
+
+/** A chord sounds, and you name which of its notes is at the bottom. */
+function chordInversion(level: Level): Question {
+  const set = level.chordSet ?? ['maj', 'min'];
+  const quality = pickRandom(set);
+  const root = 48 + Math.floor(Math.random() * 13);
+  const positions = CHORD_SEMITONE_COUNT(quality);
+  const inversion = Math.floor(Math.random() * positions);
+
+  return {
+    kind: 'chord-inversion',
+    sequence: [],
+    octaveUp: [],
+    midis: buildChord(root, quality, inversion),
+    simultaneous: true,
+    options: Array.from({ length: positions }, (_, i) => ({
+      id: String(i),
+      primary: INVERSION_LABEL[i],
+    })),
+    correctIds: [String(inversion)],
+    answerLabel: INVERSION_LONG[inversion],
+    explain: `A ${CHORD_LONG[quality].toLowerCase()} chord. Listen to the lowest note and ask which part of the chord it is.`,
+  };
+}
+
+const CHORD_SEMITONE_COUNT = (q: ChordQuality) => (q.includes('7') ? 4 : 3);
+
 /** One note on a stave, and you name the letter. */
 function readNote(level: Level): Question {
   const clef: Clef =
@@ -314,6 +381,9 @@ export function blamedDegrees(q: Question, answer: string[]): Deg[] {
   // Both live in their own course, so the key spaces never collide.
   if (q.kind === 'interval-id') return [Number(q.correctIds[0])];
   if (q.kind === 'read-note') return q.staff ? [q.staff.index] : [];
+  // Chords key on their position in CHORD_ORDER, or on the inversion index.
+  if (q.kind === 'chord-quality') return [CHORD_ORDER.indexOf(q.correctIds[0] as ChordQuality)];
+  if (q.kind === 'chord-inversion') return [Number(q.correctIds[0])];
   if (q.kind === 'which-is-home') {
     const picked = degreeForOption(q, answer[0] ?? '0');
     return picked === null ? [q.sequence[0]] : [picked];

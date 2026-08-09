@@ -7,6 +7,7 @@ import { INTRO_HELP, INTRO_LABEL, findLevel, isSingKind } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { getCourse, COURSES } from '@/core/courses';
 import { directionLabel } from '@/core/intervals';
+import { buildChord, type ChordQuality } from '@/core/chords';
 import { KEYS, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
 import {
   blamedDegrees,
@@ -58,7 +59,11 @@ export default function Practice() {
   const config = findLevel(course.levels, level);
 
   /** Interval and reading questions have no tonal centre to establish. */
-  const usesKey = config.kind !== 'interval-id' && config.kind !== 'read-note';
+  const usesKey =
+    config.kind !== 'interval-id' &&
+    config.kind !== 'read-note' &&
+    config.kind !== 'chord-quality' &&
+    config.kind !== 'chord-inversion';
   const singing = isSingKind(config.kind);
   const reading = config.kind === 'read-note';
 
@@ -257,6 +262,8 @@ export default function Practice() {
         playSequence(heard, 0, 1.0, 0.26);
       } else if (q.kind === 'interval-id') {
         playSequence(heard, q.simultaneous ? 0 : 0.4, 0.8, 0.24);
+      } else if (q.kind === 'chord-quality' || q.kind === 'chord-inversion') {
+        playSequence(heard, 0, 1.1, 0.22);
       } else {
         playCorrectSimple(tonic, q.kind === 'which-is-home' ? homeMidi : heard[0]);
       }
@@ -295,6 +302,17 @@ export default function Practice() {
     } else if (q.kind === 'read-note') {
       playSequence(heard, 0, 1.0, 0.26);
       holdMs = 2600;
+    } else if (q.kind === 'chord-quality') {
+      // Your chord from the same root, then the real one. Comparing two
+      // qualities on one root is the only way the difference is obvious.
+      const root = heard[0];
+      playSequence(buildChord(root, answer[0] as ChordQuality), 0, 0.9, 0.22);
+      later(() => playSequence(heard, 0, 1.1, 0.22), 1350);
+      holdMs = 3200;
+    } else if (q.kind === 'chord-inversion') {
+      playSequence(heard, 0.32, 0.85, 0.22); // broken, so the bass is audible
+      later(() => playSequence(heard, 0, 1.1, 0.22), 1800);
+      holdMs = 3400;
     } else {
       playAgainstHome(tonic, heard[0]);
     }
@@ -650,6 +668,39 @@ function HelpBody({
       </>
     );
   }
+  if (kind === 'chord-quality') {
+    return (
+      <>
+        <p>
+          Several notes at once. Don't try to pick them apart — listen to the{' '}
+          <strong className="text-ink">colour</strong> of the whole thing.
+        </p>
+        <p>
+          Bright and settled is major. Shaded is minor. Squeezed and anxious is diminished.
+          Stretched with no obvious bottom is augmented. A seventh adds a note that rubs.
+        </p>
+        <p className="text-subtle">
+          The root, register and voicing change every question on purpose — otherwise you learn one
+          sound rather than the quality itself.
+        </p>
+      </>
+    );
+  }
+  if (kind === 'chord-inversion') {
+    return (
+      <>
+        <p>
+          Same chords, but now the question is which note is at the{' '}
+          <strong className="text-ink">bottom</strong>.
+        </p>
+        <p>
+          Ignore the top of the chord and follow the lowest note. Root position sounds solid and
+          finished; first inversion sounds lighter and leaning; second inversion sounds unsettled,
+          like it is about to move.
+        </p>
+      </>
+    );
+  }
   if (kind === 'read-note') {
     return (
       <>
@@ -734,6 +785,10 @@ function promptFor(q: Question | null, filled: number, total: number): string {
       return 'How far apart were they?';
     case 'read-note':
       return 'What note is this?';
+    case 'chord-quality':
+      return 'What kind of chord?';
+    case 'chord-inversion':
+      return "Which note is at the bottom?";
     default:
       return total > 1 ? `Name note ${filled + 1} of ${total}` : 'Which note was that?';
   }

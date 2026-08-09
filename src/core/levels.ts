@@ -35,7 +35,11 @@ export type LevelKind =
   /** Two notes play. How far apart were they? */
   | 'interval-id'
   /** A note is drawn on a stave. What is it called? */
-  | 'read-note';
+  | 'read-note'
+  /** A chord sounds. What kind of chord is it? */
+  | 'chord-quality'
+  /** A chord sounds. Which of its notes is at the bottom? */
+  | 'chord-inversion';
 
 /** Kinds that need the microphone. */
 export function isSingKind(kind: LevelKind): boolean {
@@ -107,6 +111,13 @@ export type Level = {
   readRange?: [number, number];
   /** An explicit subset of that range, for the landmark levels. */
   readNotes?: number[];
+
+  // --- chord levels only ------------------------------------------------
+  chordSet?: import('./chords').ChordQuality[];
+  /** Voice chords in inversion as well as root position. */
+  chordInversions?: boolean;
+  /** Sometimes arrive one note at a time rather than all together. */
+  chordBroken?: boolean;
 };
 
 const MAJOR = DIATONIC.major;
