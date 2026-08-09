@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.6 shipped.** Six courses across all four pillars, plus a Practice library showing the whole shape of the app.
+**Status: v0.7 shipped.** Six courses across all four pillars, a Daily Warm-Up that mixes them, and vocal range mapping.
 
 ```bash
 npm install
@@ -19,8 +19,8 @@ npm run dev
 |---|---|
 | 🎧 **Ear training** | **Find the Note** (17 levels), **Chords** (7), **Progressions** (7) and **Intervals** (8). Still to come: melodic dictation. |
 | 👁 **Sight reading** *(started)* | Naming notes on the stave by landmark, both clefs and ledger lines. Still to come: rhythm, and scrolling reads that never stop. |
-| 🧠 **Music theory** *(started)* | Four interactive lessons with a playable keyboard. More of the curriculum to follow. |
-| 🎤 **Vocal training** *(started)* | Live pitch feedback and sung answers are in. Still to come: interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
+| 🧠 **Music theory** *(started)* | Nine interactive lessons with a playable keyboard and a circle of fifths you can hear. More of the curriculum to follow. |
+| 🎤 **Vocal training** *(started)* | Live pitch feedback, sung answers, and range mapping that fits every prompt to your voice. Still to come: interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
 
 ## What makes it different
 
@@ -60,8 +60,14 @@ Name chords by their **role in the key**, not their quality. Knowing a chord is 
 ### 👁 Read the Note — seven levels
 Name notes on the stave, built on **landmarks** rather than "Every Good Boy Deserves Fudge" — mnemonics force you to count up one line at a time, a habit you then have to unlearn. Treble, then ledger lines, then bass, then both clefs unannounced. Answer with the letter keys.
 
-### 🧠 Foundations — four lessons
-Short interactive lessons with a keyboard you can play: how the keyboard is laid out, half and whole steps, what makes a scale major, and why one note feels like home. Every lesson ends by pointing at the drill where the same idea turns up.
+### 🧠 Foundations — nine lessons
+Short interactive lessons with a keyboard you can play: how the keyboard is laid out, half and whole steps, what makes a scale major, why one note feels like home, what an interval actually is, how triads are built, why chords get numbers instead of names, what changes in a minor key, and the circle of fifths — as a ring you tap to hear rather than a diagram to memorise. Every lesson ends by pointing at the drill where the same idea turns up; that linkage is what stops theory becoming trivia.
+
+### 🎤 Your range
+Sing your lowest comfortable note and your highest, once. After that every sung prompt plays in your octave instead of around middle C, so a low voice never has to transpose the question before answering it. Grading was always on the note rather than the octave, so nothing about what counts as right changes. Reported as a span in plain words — never a voice type, which two measured notes cannot support anyway.
+
+### 🔁 The Daily Warm-Up
+Ten questions assembled fresh from every course you've started, weighted toward the ones you're weakest at, with roughly a third reaching back below your current level. It exists because practising a course always serves its current level, so everything under it quietly rots — and because **interleaving** beats grinding one drill at a time for retention, even though it reliably feels worse while you're doing it. No single course can take more than 60% of the round, so the same drill never lands three times running.
 
 ---
 
@@ -76,7 +82,7 @@ Short interactive lessons with a keyboard you can play: how the keyboard is laid
 - Local-first: no account, nothing leaves the browser
 - Installable PWA, works offline
 
-Deliberately **not** built yet: skill map, XP, achievements, the daily Warm-Up mix. Five more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
+Deliberately **not** built yet: skill map, XP, achievements, spaced repetition scheduling. Four more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
 
 ## Documentation
 

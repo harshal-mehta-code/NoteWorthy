@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { Button, Card, IconButton, Label, Screen } from '@/components/ui';
 import { Keyboard } from '@/components/Keyboard';
+import { CircleOfFifths } from '@/components/CircleOfFifths';
+import { tonicTriad } from '@/core/music';
 import { LESSONS, getLesson, type Card as LessonCard } from '@/content/lessons';
 import { useStore } from '@/store/useStore';
 import { playNote, playSequence, unlockAudio } from '@/audio/engine';
@@ -34,7 +36,9 @@ export default function Lesson() {
     const card = lesson?.cards[step];
     if (!card || card.kind !== 'keys' || !card.play) return;
     const t = window.setTimeout(() => {
-      void unlockAudio().then(() => playSequence(card.play!, 0.42, 0.7, 0.26));
+      void unlockAudio().then(() =>
+        playSequence(card.play!, card.together ? 0 : 0.42, card.together ? 1.4 : 0.7, 0.24),
+      );
     }, 380);
     timers.current.push(t);
     return () => clearTimeout(t);
@@ -133,12 +137,34 @@ function CardBody({
         </div>
         {card.play && (
           <button
-            onClick={() => void unlockAudio().then(() => playSequence(card.play!, 0.42, 0.7, 0.26))}
+            onClick={() =>
+              void unlockAudio().then(() =>
+                playSequence(card.play!, card.together ? 0 : 0.42, card.together ? 1.4 : 0.7, 0.24),
+              )
+            }
             className="mx-auto block text-[13px] text-subtle transition hover:text-ink"
           >
             Play it again
           </button>
         )}
+      </div>
+    );
+  }
+
+  if (card.kind === 'circle') {
+    return (
+      <div className="space-y-4">
+        <p className="text-[16px] leading-relaxed text-muted">{rich(card.body)}</p>
+        <div className="rounded-2xl border border-line bg-surface p-3">
+          <CircleOfFifths
+            onPick={(tonic) =>
+              void unlockAudio().then(() => playSequence(tonicTriad(tonic), 0, 1.5, 0.22))
+            }
+          />
+          {card.caption && (
+            <p className="mt-2.5 text-center text-[12.5px] text-subtle">{card.caption}</p>
+          )}
+        </div>
       </div>
     );
   }

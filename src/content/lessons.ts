@@ -17,9 +17,17 @@ export type Card =
       highlight: number[];
       /** Play these in order when the card is opened or tapped. */
       play?: number[];
+      /** Sound them at once instead of one after another — for chords. */
+      together?: boolean;
       labels?: 'none' | 'c' | 'all';
       caption?: string;
     }
+  /**
+   * The circle of fifths, as a thing you can spin rather than a picture.
+   * A diagram of it is memorised; a ring you can tap and hear is understood,
+   * and the app rotates keys through it anyway.
+   */
+  | { kind: 'circle'; body: string; caption?: string }
   | {
       kind: 'question';
       prompt: string;
@@ -201,6 +209,259 @@ export const LESSONS: Lesson[] = [
         answer: 1,
         because:
           'Stability comes from belonging to the home chord. Everything else sits between those notes and pulls toward the nearest one.',
+      },
+    ],
+  },
+
+  {
+    id: 'intervals',
+    title: 'Distance is the whole idea',
+    blurb: 'What an interval is, why it has two names, and why width comes before colour.',
+    minutes: 4,
+    nextUp: 'Intervals — naming these by ear, starting with the widest.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'An **interval** is the distance between two notes. That is the entire definition. It has no key, no home, and no context — the same distance sounds like the same distance wherever you put it.',
+      },
+      {
+        kind: 'keys',
+        body: 'Count in half steps. C up to G is **seven** half steps, and that distance is called a **fifth**. Play it anywhere and it is still a fifth.',
+        highlight: [60, 67],
+        play: [60, 67],
+        caption: 'Seven half steps. Open, hollow, and very stable.',
+      },
+      {
+        kind: 'keys',
+        body: 'The same seven half steps, started somewhere else. Nothing about the sound has changed except its height.',
+        highlight: [65, 72],
+        play: [65, 72],
+        caption: 'F up to C. Still a fifth.',
+      },
+      {
+        kind: 'text',
+        body: 'Intervals have two names because there are two ways to count. The **number** counts letter names — C to G is C-D-E-F-G, five letters, so: a fifth. The **quality** — major, minor, perfect — says exactly which version of that number you have.',
+      },
+      {
+        kind: 'keys',
+        body: 'A **major third** is four half steps and sounds bright. A **minor third** is three and sounds shaded. One half step apart, and it is the difference between happy and sad in almost all Western music.',
+        highlight: [60, 63, 64],
+        play: [60, 64, 60, 63],
+        caption: 'C-E, then C-E♭. The same third, one step darker.',
+      },
+      {
+        kind: 'question',
+        prompt: 'How many half steps make a major third?',
+        options: ['Three', 'Four', 'Five', 'Seven'],
+        answer: 1,
+        because:
+          'Four. Three half steps is a minor third — the shaded one. That single step is the whole difference between a major and a minor chord.',
+      },
+      {
+        kind: 'text',
+        body: 'When you start naming these by ear, listen for **width** before colour. Is it a step, a reach, or a leap? Narrow it to a size first, then ask whether it sounds bright or shaded. Trying to judge both at once is how people stall.',
+      },
+    ],
+  },
+
+  {
+    id: 'triads',
+    title: 'Three notes make a chord',
+    blurb: 'Stack two thirds and you have a triad. Which thirds decides everything.',
+    minutes: 4,
+    nextUp: 'Chords — telling these apart by ear, major against minor first.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'A **triad** is three notes stacked in thirds: a root, the note a third above it, and the note a third above *that*. Nearly every chord you have ever heard is a triad or a triad with something added.',
+      },
+      {
+        kind: 'keys',
+        body: 'A **major** triad: four half steps, then three. Bright, settled, finished.',
+        highlight: [60, 64, 67],
+        play: [60, 64, 67],
+        together: true,
+        caption: 'C major — C, E, G.',
+      },
+      {
+        kind: 'keys',
+        body: 'A **minor** triad: three half steps, then four. The same two intervals, swapped. That swap is the whole difference.',
+        highlight: [60, 63, 67],
+        play: [60, 63, 67],
+        together: true,
+        caption: 'C minor — C, E♭, G. One key moved.',
+      },
+      {
+        kind: 'question',
+        prompt: 'What changes between a major and a minor triad?',
+        options: [
+          'The root moves down',
+          'The middle note moves down a half step',
+          'The top note moves down a half step',
+        ],
+        answer: 1,
+        because:
+          'Only the middle note. The root and the fifth stay exactly where they are — which is why major and minor feel so closely related and yet so different.',
+      },
+      {
+        kind: 'keys',
+        body: 'Squeeze both thirds and you get **diminished** — three and three. Tense, unstable, and always on its way somewhere.',
+        highlight: [60, 63, 66],
+        play: [60, 63, 66],
+        together: true,
+        caption: 'C diminished. Nothing about this wants to sit still.',
+      },
+      {
+        kind: 'keys',
+        body: 'Stretch both and you get **augmented** — four and four. Evenly spaced, so it has no obvious bottom and sounds like it is floating.',
+        highlight: [60, 64, 68],
+        play: [60, 64, 68],
+        together: true,
+        caption: 'C augmented. Strange, and rare for a reason.',
+      },
+      {
+        kind: 'text',
+        body: 'When you name these by ear, do not try to pick the notes apart. Listen to the **colour of the whole thing**: bright and settled, shaded, squeezed and anxious, or stretched and floating.',
+      },
+    ],
+  },
+
+  {
+    id: 'chords-in-key',
+    title: 'Every chord has a job',
+    blurb: 'Why chords get numbers, and what those numbers tell you.',
+    minutes: 4,
+    nextUp: 'Progressions — naming chords by their number, by ear.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'Build a triad on each note of a major scale, using only notes from that scale. You get **seven chords**, and they are the same seven in every major key. That is why chords get numbers instead of names.',
+      },
+      {
+        kind: 'keys',
+        body: 'Chord **I** is built on the first note. In C that is C major, and it is home — where things end up.',
+        highlight: [60, 64, 67],
+        play: [60, 64, 67],
+        together: true,
+        caption: 'I — home.',
+      },
+      {
+        kind: 'keys',
+        body: 'Chord **V** is built on the fifth note. It is major, it is tense, and it pulls back to I harder than anything else in the key.',
+        highlight: [67, 71, 74],
+        play: [67, 71, 74],
+        together: true,
+        caption: 'V — the pull home.',
+      },
+      {
+        kind: 'keys',
+        body: 'Chord **vi** is built on the sixth note. Using only scale notes makes it come out **minor** — the sad chord that lives inside every major key. Lowercase numerals mean minor.',
+        highlight: [69, 72, 76],
+        play: [69, 72, 76],
+        together: true,
+        caption: 'vi — minor, without leaving the key.',
+      },
+      {
+        kind: 'question',
+        prompt: 'Why is vi minor when the key is major?',
+        options: [
+          'Because it uses notes from outside the key',
+          'Because stacking thirds from the sixth note happens to give three half steps first',
+          'Because minor chords are always sixth',
+        ],
+        answer: 1,
+        because:
+          'Nothing was added or altered. Stacking scale notes in thirds from the sixth degree simply produces a minor third first — the key gets its minor chords for free.',
+      },
+      {
+        kind: 'text',
+        body: 'This is why numbers beat names. **I–V–vi–IV** describes thousands of songs in every key at once. Learn a progression by its numbers and you can play it anywhere, transpose it instantly, and recognise it in music you have never heard.',
+      },
+    ],
+  },
+
+  {
+    id: 'minor',
+    title: 'When home goes dark',
+    blurb: 'What actually changes in a minor key, and what stays exactly the same.',
+    minutes: 3,
+    nextUp: 'Find the Note, stage 3 — the same seven notes, with home moved.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'A minor key is not a different set of notes. It is the same idea with **three of the seven lowered** by a half step: the third, the sixth and the seventh.',
+      },
+      {
+        kind: 'keys',
+        body: 'C major: the seven notes you already know.',
+        highlight: [60, 62, 64, 65, 67, 69, 71, 72],
+        play: [60, 62, 64, 65, 67, 69, 71, 72],
+        caption: 'C D E F G A B C.',
+      },
+      {
+        kind: 'keys',
+        body: 'C minor: **E♭**, **A♭**, **B♭**. Three keys moved, and the whole thing changes character.',
+        highlight: [60, 62, 63, 65, 67, 68, 70, 72],
+        play: [60, 62, 63, 65, 67, 68, 70, 72],
+        caption: 'C D E♭ F G A♭ B♭ C.',
+      },
+      {
+        kind: 'keys',
+        body: 'The lowered third is the one that does the work. Home itself is now a **minor** triad, and everything sits under it.',
+        highlight: [60, 63, 67],
+        play: [60, 64, 67, 60, 63, 67],
+        together: false,
+        caption: 'C major home, then C minor home.',
+      },
+      {
+        kind: 'question',
+        prompt: 'Which note changing is what makes a key sound minor?',
+        options: ['The first', 'The third', 'The fifth'],
+        answer: 1,
+        because:
+          'The third. It is the note inside the home chord itself, so lowering it recolours everything built on top. The first and fifth are identical in both.',
+      },
+      {
+        kind: 'text',
+        body: 'Here is the part that matters for your ear: **home still feels like home**. Everything you have learned about resting and leaning still applies. Only the colour changed, not the gravity.',
+      },
+    ],
+  },
+
+  {
+    id: 'circle',
+    title: 'The circle of fifths',
+    blurb: 'Why keys are arranged in a ring, and what being neighbours actually means.',
+    minutes: 4,
+    nextUp: 'Any ear drill with rotating keys — the circle is the order they rotate in.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'Twelve keys sounds like twelve things to learn. It is really **one thing, twelve times** — and the order they come in is not alphabetical. It is by fifths.',
+      },
+      {
+        kind: 'keys',
+        body: 'Start on C and go up a fifth: G. Up another fifth: D. Keep going and you pass through all twelve notes before returning to C.',
+        highlight: [60, 67, 74],
+        play: [60, 67, 74],
+        caption: 'C, G, D — each a fifth above the last.',
+      },
+      {
+        kind: 'circle',
+        body: 'Laid out in a ring, it becomes a map. Each step clockwise adds one sharp; each step anticlockwise adds one flat. **Neighbours on the ring share six of their seven notes** — which is why moving between them sounds smooth, and why so much music does exactly that.',
+        caption: 'Tap any key to hear its home chord.',
+      },
+      {
+        kind: 'question',
+        prompt: 'C major has no sharps or flats. How many does G major have?',
+        options: ['None', 'One sharp', 'Two sharps', 'One flat'],
+        answer: 1,
+        because:
+          'One — F♯. G is one step clockwise from C, and each step that way adds exactly one sharp. That is the whole rule.',
+      },
+      {
+        kind: 'text',
+        body: 'This is also why the app rotates keys rather than staying in C. An ear trained only in one key learns **those pitches**; an ear trained across the circle learns the *relationships*, which is the thing that transfers.',
       },
     ],
   },
