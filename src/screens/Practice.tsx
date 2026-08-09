@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Dots, IconButton, Screen, Sheet } from '@/components/ui';
-import { INTRO_HELP, INTRO_LABEL, getLevel, isSingKind } from '@/core/levels';
+import { SingPanel, type SingOutcome } from '@/components/SingPanel';
+import { Staff } from '@/components/Staff';
+import { INTRO_HELP, INTRO_LABEL, findLevel, isSingKind } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
+import { getCourse, COURSES } from '@/core/courses';
+import { directionLabel } from '@/core/intervals';
 import { KEYS, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
 import {
   blamedDegrees,
@@ -12,8 +16,8 @@ import {
   slotCount,
   type Question,
 } from '@/core/question';
-import { degreeWeights, useStore } from '@/store/useStore';
-import { SingPanel, type SingOutcome } from '@/components/SingPanel';
+import { degreeWeights, levelFor, useStore } from '@/store/useStore';
+import { statKey } from '@/core/courses';
 import {
   now,
   playAgainstHome,
@@ -38,7 +42,10 @@ const SEQUENCE_GAP = 0.78;
 
 export default function Practice() {
   const navigate = useNavigate();
-  const level = useStore((s) => s.level);
+  const params = useParams<{ courseId?: string }>();
+  const course = getCourse(params.courseId ?? 'find-the-note') ?? COURSES[0];
+
+  const progress = useStore((s) => s.progress);
   const keyMode = useStore((s) => s.keyMode);
   const keyName = useStore((s) => s.keyName);
   const labelStyle = useStore((s) => s.labelStyle);
@@ -47,7 +54,13 @@ export default function Practice() {
   const recordAnswer = useStore((s) => s.recordAnswer);
   const finishSession = useStore((s) => s.finishSession);
 
-  const config = getLevel(level);
+  const level = levelFor(progress, course.id);
+  const config = findLevel(course.levels, level);
+
+  /** Interval and reading questions have no tonal centre to establish. */
+  const usesKey = config.kind !== 'interval-id' && config.kind !== 'read-note';
+  const singing = isSingKind(config.kind);
+  const reading = config.kind === 'read-note';
 
   const rollKey = useCallback(
     (): KeyChoice =>
@@ -57,17 +70,17 @@ export default function Practice() {
     [config.keyPerQuestion, keyMode, keyName],
   );
 
-  /** Fixed for the round unless the level deliberately re-rolls it. */
   const [key, setKey] = useState<KeyChoice>(rollKey);
   const keyRef = useRef(key);
   keyRef.current = key;
 
-  // The intro override is a naming-stage idea; drone levels have no intro.
-  const introMode: IntroMode = config.drone
+  const introMode: IntroMode = !usesKey
     ? 'none'
-    : introOverride === 'auto'
-      ? config.intro
-      : introOverride;
+    : config.drone
+      ? 'none'
+      : introOverride === 'auto'
+        ? config.intro
+        : introOverride;
 
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('intro');
@@ -79,7 +92,7 @@ export default function Practice() {
 
   const score = useRef({ correct: 0, bestStreak: 0, misses: new Map<number, number>() });
   const timers = useRef<number[]>([]);
-  const prevDegree = useRef<number | null>(null);
+  const prevItem = useRef<number | null>(null);
   const answered = useRef(false);
 
   /**
@@ -88,7 +101,7 @@ export default function Practice() {
    * you rather than adapting.
    */
   const weights = useMemo(
-    () => degreeWeights(allDegreeStats[level], config.degrees),
+    () => degreeWeights(allDegreeStats[statKey(course.id, level)], config.degrees),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -101,7 +114,6 @@ export default function Practice() {
     timers.current.push(window.setTimeout(fn, ms));
   };
 
-  // The drone runs for the whole round, and must not outlive the screen.
   useEffect(
     () => () => {
       clearTimers();
@@ -110,22 +122,32 @@ export default function Practice() {
     [],
   );
 
+  /** Absolute pitches for a question, whether it thinks in degrees or not. */
   const midisFor = useCallback(
     (q: Question, tonic: number) =>
-      q.sequence.map((deg, i) => degreeToMidi(tonic, deg, q.octaveUp[i])),
+      q.midis ?? q.sequence.map((deg, i) => degreeToMidi(tonic, deg, q.octaveUp[i])),
     [],
   );
 
-  /** Play the question's notes, marking which one is sounding. */
   const playQuestion = useCallback(
     (q: Question, tonic: number, onDone: () => void) => {
       const midis = midisFor(q, tonic);
       setPlayingIndex(0);
 
-      if (midis.length === 0) {
-        // sing-degree: you're told the note, nothing plays it for you.
+      // Reading questions are silent until answered — the whole point is to
+      // decode the notation, not to recognise a pitch.
+      if (midis.length === 0 || q.kind === 'read-note') {
         setPlayingIndex(-1);
         later(onDone, 120);
+        return;
+      }
+
+      if (q.simultaneous) {
+        playSequence(midis, 0, 1.3, 0.24);
+        later(() => {
+          setPlayingIndex(-1);
+          onDone();
+        }, 320);
         return;
       }
 
@@ -138,7 +160,7 @@ export default function Practice() {
         return;
       }
 
-      playSequence(midis, SEQUENCE_GAP, 0.66, 0.26);
+      playSequence(midis, SEQUENCE_GAP, 0.7, 0.26);
       midis.forEach((_, i) => later(() => setPlayingIndex(i), i * SEQUENCE_GAP * 1000 + 60));
       later(
         () => {
@@ -163,8 +185,10 @@ export default function Practice() {
         setKey(tonic);
       }
 
-      const q = generate(config, prevDegree.current, weights);
-      prevDegree.current = q.target ?? q.sequence[q.sequence.length - 1] ?? null;
+      const q = generate(config, prevItem.current, weights);
+      prevItem.current =
+        q.target ?? (q.kind === 'read-note' ? (q.staff?.index ?? null) : null) ??
+        q.sequence[q.sequence.length - 1] ?? null;
       setQuestion(q);
 
       const startPlaying = () => {
@@ -173,20 +197,15 @@ export default function Practice() {
       };
 
       if (config.drone) {
-        // The drone is the reference, so there's nothing to introduce. Give
-        // the first question a beat longer so the drone has faded up first.
         setPhase('playing');
         later(startPlaying, questionIndex === 0 ? 950 : 320);
         return;
       }
 
-      // Without a drone you need the key planted first. Even a level that
-      // normally runs without an intro gets one on question one, or you
-      // start with no bearings at all.
-      const intro: IntroMode = questionIndex === 0 && introMode === 'none' ? 'short' : introMode;
+      const intro: IntroMode = questionIndex === 0 && introMode === 'none' && usesKey ? 'short' : introMode;
       if (intro === 'none') {
         setPhase('playing');
-        later(startPlaying, 320);
+        later(startPlaying, 260);
         return;
       }
 
@@ -194,10 +213,9 @@ export default function Practice() {
       const introEnds = playKeyIntro(tonic.tonic, intro, config.mode);
       later(startPlaying, Math.max(120, (introEnds - now()) * 1000 + 240));
     },
-    [config, introMode, playQuestion, rollKey, weights],
+    [config, introMode, playQuestion, rollKey, usesKey, weights],
   );
 
-  // Guarded so StrictMode's double-invoke can't start two rounds at once.
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
@@ -209,24 +227,36 @@ export default function Practice() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function creditItems(q: Question): number[] {
+    if (q.kind === 'interval-id') return [Number(q.correctIds[0])];
+    if (q.kind === 'read-note') return q.staff ? [q.staff.index] : [];
+    if (isSingKind(q.kind)) return q.target === undefined ? [] : [q.target];
+    return q.sequence;
+  }
+
   function grade(q: Question, answer: string[]) {
     answered.current = true;
     const tonic = keyRef.current.tonic;
     const correct = answer.every((id, i) => id === q.correctIds[i]);
-    recordAnswer(level, correct, correct ? q.sequence : blamedDegrees(q, answer));
+    recordAnswer(course.id, level, correct, correct ? creditItems(q) : blamedDegrees(q, answer));
 
     const heard = midisFor(q, tonic);
     const homeMidi = degreeToMidi(tonic, 0);
 
     if (correct) {
-      const nextStreak = streak + 1;
-      setStreak(nextStreak);
+      const next = streak + 1;
+      setStreak(next);
       score.current.correct += 1;
-      score.current.bestStreak = Math.max(score.current.bestStreak, nextStreak);
+      score.current.bestStreak = Math.max(score.current.bestStreak, next);
       setPhase('correct');
 
       if (q.kind === 'name-the-note') {
-        playCorrect(tonic, heard[heard.length - 1], nextStreak, config.mode);
+        playCorrect(tonic, heard[heard.length - 1], next, config.mode);
+      } else if (q.kind === 'read-note') {
+        // Hearing it is the reward, and it ties the symbol to a sound.
+        playSequence(heard, 0, 1.0, 0.26);
+      } else if (q.kind === 'interval-id') {
+        playSequence(heard, q.simultaneous ? 0 : 0.4, 0.8, 0.24);
       } else {
         playCorrectSimple(tonic, q.kind === 'which-is-home' ? homeMidi : heard[0]);
       }
@@ -236,29 +266,35 @@ export default function Practice() {
 
     setStreak(0);
     setPhase('wrong');
-    for (const deg of blamedDegrees(q, answer)) {
-      score.current.misses.set(deg, (score.current.misses.get(deg) ?? 0) + 1);
+    for (const item of blamedDegrees(q, answer)) {
+      score.current.misses.set(item, (score.current.misses.get(item) ?? 0) + 1);
     }
 
     let holdMs = HOLD_WRONG_MS;
 
     if (q.kind === 'name-the-note' && q.sequence.length > 1) {
-      // Your phrase, then the real one — the contrast is the correction.
       const mine = answer.map((id, i) => degreeToMidi(tonic, Number(id), q.octaveUp[i]));
       playSequence(mine, SEQUENCE_GAP, 0.6, 0.24);
       const secondAt = q.sequence.length * SEQUENCE_GAP * 1000 + 500;
       later(() => playSequence(heard, SEQUENCE_GAP, 0.6, 0.24), secondAt);
       holdMs = secondAt + q.sequence.length * SEQUENCE_GAP * 1000 + 900;
     } else if (q.kind === 'name-the-note') {
-      playComparison(
-        tonic,
-        degreeToMidi(tonic, Number(answer[0]), q.octaveUp[0]),
-        heard[0],
-        config.mode,
-      );
+      playComparison(tonic, degreeToMidi(tonic, Number(answer[0]), q.octaveUp[0]), heard[0], config.mode);
     } else if (q.kind === 'which-is-home') {
       const pickedDeg = degreeForOption(q, answer[0]);
       playComparison(tonic, degreeToMidi(tonic, pickedDeg ?? 0), homeMidi, config.mode);
+    } else if (q.kind === 'interval-id') {
+      // Your interval from the same root, then the real one — the contrast
+      // is what corrects it.
+      const root = heard[0];
+      const mineSize = Number(answer[0]);
+      const down = heard[1] < heard[0];
+      playSequence([root, down ? root - mineSize : root + mineSize], 0.45, 0.7, 0.24);
+      later(() => playSequence(heard, q.simultaneous ? 0 : 0.45, 0.8, 0.24), 1500);
+      holdMs = 3600;
+    } else if (q.kind === 'read-note') {
+      playSequence(heard, 0, 1.0, 0.26);
+      holdMs = 2600;
     } else {
       playAgainstHome(tonic, heard[0]);
     }
@@ -266,11 +302,6 @@ export default function Practice() {
     later(advance, holdMs);
   }
 
-  /**
-   * Sing levels are graded by the microphone, not by a button, so they get
-   * their own path. A skip is not a wrong answer — it advances without
-   * recording anything, so a missing microphone never poisons your stats.
-   */
   function handleSing(outcome: SingOutcome) {
     if (!question || answered.current) return;
     answered.current = true;
@@ -284,25 +315,24 @@ export default function Practice() {
     }
 
     const hit = outcome === 'hit';
-    recordAnswer(level, hit, blamedDegrees(question, []));
+    recordAnswer(course.id, level, hit, creditItems(question));
 
     if (hit) {
-      const nextStreak = streak + 1;
-      setStreak(nextStreak);
+      const next = streak + 1;
+      setStreak(next);
       score.current.correct += 1;
-      score.current.bestStreak = Math.max(score.current.bestStreak, nextStreak);
+      score.current.bestStreak = Math.max(score.current.bestStreak, next);
       setPhase('correct');
-      playCorrect(tonic, targetMidi, nextStreak, config.mode);
+      playCorrect(tonic, targetMidi, next, config.mode);
       later(advance, HOLD_CORRECT_MS);
       return;
     }
 
     setStreak(0);
     setPhase('wrong');
-    for (const deg of blamedDegrees(question, [])) {
-      score.current.misses.set(deg, (score.current.misses.get(deg) ?? 0) + 1);
+    for (const item of creditItems(question)) {
+      score.current.misses.set(item, (score.current.misses.get(item) ?? 0) + 1);
     }
-    // Nothing to compare against, so just play the note they were reaching for.
     playSequence([targetMidi], SEQUENCE_GAP, 1.1, 0.26);
     later(advance, 2200);
   }
@@ -334,9 +364,10 @@ export default function Practice() {
     if (next >= config.roundLength) {
       const weakDegrees = [...score.current.misses.entries()]
         .sort((a, b) => b[1] - a[1])
-        .map(([deg]) => deg);
+        .map(([item]) => item);
       stopDrone();
       finishSession({
+        courseId: course.id,
         levelId: level,
         correct: score.current.correct,
         total: config.roundLength,
@@ -352,7 +383,7 @@ export default function Practice() {
   }
 
   function replay() {
-    if (phase !== 'question' || !question) return;
+    if (phase !== 'question' || !question || reading) return;
     setPhase('playing');
     playQuestion(question, keyRef.current.tonic, () => setPhase('question'));
   }
@@ -370,6 +401,11 @@ export default function Practice() {
         undo();
         return;
       }
+      const letter = question.options.find((o) => o.id.toLowerCase() === e.key.toLowerCase());
+      if (letter) {
+        pick(letter.id);
+        return;
+      }
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1) return;
       const option = question.options[n - 1];
@@ -380,16 +416,15 @@ export default function Practice() {
   });
 
   const revealed = phase === 'correct' || phase === 'wrong';
-  const singing = isSingKind(config.kind);
   const cols = question ? columnsFor(question) : 3;
   const totalSlots = question ? slotCount(question) : 1;
-  const multiNote = (question?.sequence.length ?? 1) > 1;
+  const multiNote = (question?.sequence.length ?? 0) > 1;
   const multiSlot = totalSlots > 1;
 
   return (
     <Screen className="pad-top pad-bottom">
       <header className="flex items-center gap-4 py-2">
-        <IconButton label="End round" onClick={() => navigate('/')}>
+        <IconButton label="End round" onClick={() => navigate('/practice')}>
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
             <path d="M3 3l9 9M12 3l-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
@@ -399,33 +434,60 @@ export default function Practice() {
         </div>
       </header>
 
-      <div className="flex justify-center gap-2 pt-4">
-        <span className="label rounded-full border border-accent-dim bg-accent-wash px-3 py-1.5 text-accent">
-          Key of {keyLabel(key, config.mode)}
-        </span>
+      <div className="flex flex-wrap justify-center gap-2 pt-4">
+        {usesKey ? (
+          <span className="label rounded-full border border-accent-dim bg-accent-wash px-3 py-1.5 text-accent">
+            Key of {keyLabel(key, config.mode)}
+          </span>
+        ) : (
+          <span className="label rounded-full border border-line px-3 py-1.5 text-subtle">
+            {course.name} · {config.name}
+          </span>
+        )}
         {config.drone && (
           <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
             Drone on
           </span>
         )}
+        {config.kind === 'interval-id' && (
+          <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
+            {directionLabel(config.intervalDirection ?? 'up')}
+          </span>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 py-4 text-center">
-        {singing && phase === 'question' ? null : multiNote ? (
+        {singing && question && phase === 'question' ? (
+          <div className="w-full">
+            <SingPanel
+              key={`${index}-${question.target}`}
+              targetMidi={degreeToMidi(keyRef.current.tonic, question.target ?? 0)}
+              targetLabel={question.answerLabel}
+              tolerance={config.singTolerance}
+              onOutcome={handleSing}
+              onReplayReference={replayReference}
+            />
+          </div>
+        ) : reading && question?.staff ? (
+          <div className="w-full rounded-2xl border border-line bg-surface px-2 py-3">
+            <Staff
+              index={question.staff.index}
+              clef={question.staff.clef}
+              tone={phase === 'correct' ? 'correct' : phase === 'wrong' ? 'wrong' : 'neutral'}
+            />
+          </div>
+        ) : multiNote ? (
           <SequenceOrbs
             count={question?.sequence.length ?? 3}
             playing={playingIndex}
-            phase={phase}
             highlightAnswer={question?.kind === 'which-is-home' && revealed}
             answerIndex={question?.kind === 'which-is-home' ? Number(question.correctIds[0]) : -1}
-            pickedIndex={
-              question?.kind === 'which-is-home' && slots.length ? Number(slots[0]) : -1
-            }
+            pickedIndex={question?.kind === 'which-is-home' && slots.length ? Number(slots[0]) : -1}
           />
         ) : (
           <button
             onClick={replay}
-            aria-label="Play the note again"
+            aria-label="Play again"
             className={`grid size-32 place-items-center rounded-full border bg-surface transition ${
               phase === 'correct'
                 ? 'anim-pulse border-correct'
@@ -439,27 +501,12 @@ export default function Practice() {
             }`}
           >
             <span
-              className={`text-[34px] leading-none ${
-                phase === 'intro' ? 'text-subtle' : 'text-accent'
-              }`}
+              className={`text-[34px] leading-none ${phase === 'intro' ? 'text-subtle' : 'text-accent'}`}
               aria-hidden="true"
             >
               {phase === 'intro' ? '♩' : '♪'}
             </span>
           </button>
-        )}
-
-        {singing && question && phase === 'question' && (
-          <div className="w-full">
-            <SingPanel
-              key={`${index}-${question.target}`}
-              targetMidi={degreeToMidi(keyRef.current.tonic, question.target ?? 0)}
-              targetLabel={question.answerLabel}
-              tolerance={config.singTolerance}
-              onOutcome={handleSing}
-              onReplayReference={replayReference}
-            />
-          </div>
         )}
 
         {!(singing && phase === 'question') && (
@@ -501,62 +548,59 @@ export default function Practice() {
         />
       )}
 
-      <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-      >
-        {question?.options.map((option) => {
-          // With several slots a single button can be right in one and wrong
-          // in another, so the per-slot row carries the verdict instead.
-          const tone =
-            revealed && !multiSlot
-              ? option.id === question.correctIds[0]
-                ? 'border-correct bg-correct-wash text-correct'
-                : option.id === slots[0]
-                  ? 'border-wrong bg-wrong-wash text-wrong'
-                  : 'border-line bg-surface text-subtle'
-              : revealed
-                ? 'border-line bg-surface text-subtle'
-                : 'border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-2';
+      {!singing && (
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+          {question?.options.map((option) => {
+            const tone =
+              revealed && !multiSlot
+                ? option.id === question.correctIds[0]
+                  ? 'border-correct bg-correct-wash text-correct'
+                  : option.id === slots[0]
+                    ? 'border-wrong bg-wrong-wash text-wrong'
+                    : 'border-line bg-surface text-subtle'
+                : revealed
+                  ? 'border-line bg-surface text-subtle'
+                  : 'border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-2';
 
-          return (
-            <button
-              key={option.id}
-              disabled={phase !== 'question'}
-              onPointerDown={() => {
-                const deg = degreeForOption(question, option.id);
-                if (phase === 'question' && deg !== null && question.kind === 'name-the-note') {
-                  playTapTick(degreeToMidi(keyRef.current.tonic, deg));
-                }
-              }}
-              onClick={() => pick(option.id)}
-              className={`grid gap-0.5 rounded-xl border px-1 py-3.5 transition active:scale-[0.97] disabled:active:scale-100 ${tone} ${
-                phase === 'intro' || phase === 'playing' ? 'opacity-45' : ''
-              }`}
-            >
-              <span className="tnum text-[17px] leading-tight font-bold tracking-tight">
-                {question.kind === 'name-the-note' && labelStyle === 'solfege'
-                  ? (option.secondary ?? option.primary)
-                  : option.primary}
-              </span>
-              {option.secondary && (
-                <span className="text-[10px] leading-tight opacity-65">
+            return (
+              <button
+                key={option.id}
+                disabled={phase !== 'question'}
+                onPointerDown={() => {
+                  const deg = degreeForOption(question, option.id);
+                  if (phase === 'question' && deg !== null && question.kind === 'name-the-note') {
+                    playTapTick(degreeToMidi(keyRef.current.tonic, deg));
+                  }
+                }}
+                onClick={() => pick(option.id)}
+                className={`grid gap-0.5 rounded-xl border px-1 py-3.5 transition active:scale-[0.97] disabled:active:scale-100 ${tone} ${
+                  phase === 'intro' || phase === 'playing' ? 'opacity-45' : ''
+                }`}
+              >
+                <span className="tnum text-[17px] leading-tight font-bold tracking-tight">
                   {question.kind === 'name-the-note' && labelStyle === 'solfege'
-                    ? option.primary
-                    : option.secondary}
+                    ? (option.secondary ?? option.primary)
+                    : option.primary}
                 </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                {option.secondary && (
+                  <span className="text-[10px] leading-tight opacity-65">
+                    {question.kind === 'name-the-note' && labelStyle === 'solfege'
+                      ? option.primary
+                      : option.secondary}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 pt-3 pb-1 text-[13px]">
         <button
           onClick={replay}
-          disabled={phase !== 'question' || singing}
+          disabled={phase !== 'question' || singing || reading}
           className={`py-2 text-subtle transition hover:text-ink disabled:opacity-40 ${
-            singing ? 'invisible' : ''
+            singing || reading ? 'invisible' : ''
           }`}
         >
           Play again
@@ -568,56 +612,10 @@ export default function Practice() {
       </div>
 
       <Sheet open={helpOpen} onClose={() => setHelpOpen(false)} title="What's this?">
-        {config.drone ? (
-          <>
-            <p>
-              That steady tone underneath is <strong className="text-ink">home</strong>. It never
-              changes, so you don't have to remember anything — you just compare.
-            </p>
-            <p>
-              A note that <em>is</em> home blends into the drone and almost disappears. Every other
-              note sits against it and creates a little friction. That friction is the thing to
-              listen for.
-            </p>
-          </>
-        ) : (
-          <>
-            <p>
-              The chords at the start plant <strong className="text-ink">home</strong> in your ear.
-              Then the question plays, and now you have to hold home in your head rather than hear
-              it.
-            </p>
-            <p>
-              Don't count intervals. Ask instead: has this note arrived, or does it want to move?
-              That instinct is the whole skill.
-            </p>
-          </>
-        )}
-        {singing && (
-          <>
-            <p>
-              Nothing plays while you sing — the reference stops first, so you're producing the
-              note from memory rather than matching one that's still ringing.
-            </p>
-            <p>
-              <strong className="text-ink">Any octave counts.</strong> Sing it wherever it sits
-              comfortably in your voice; the app only cares that it's the right note.
-            </p>
-            <p className="text-subtle">
-              Headphones help. Hold the note steady for about a second to pass.
-            </p>
-          </>
-        )}
-        {config.mode === 'minor' && (
-          <p>
-            This key is <strong className="text-ink">minor</strong>. Home works the same way, but
-            the third, sixth and seventh all sit a semitone lower — which is what makes it sound
-            darker.
-          </p>
-        )}
+        <HelpBody kind={config.kind} droning={config.drone} minor={config.mode === 'minor'} />
         <p className="text-subtle">
-          Level {config.id} · {config.name}
-          {!config.drone && (
+          {course.name} · level {config.id} — {config.name}
+          {usesKey && !config.drone && (
             <>
               {' '}
               — <span className="text-ink">{INTRO_LABEL[introMode]}</span>, {INTRO_HELP[introMode]}
@@ -626,6 +624,95 @@ export default function Practice() {
         </p>
       </Sheet>
     </Screen>
+  );
+}
+
+function HelpBody({
+  kind,
+  droning,
+  minor,
+}: {
+  kind: string;
+  droning: boolean;
+  minor: boolean;
+}) {
+  if (kind === 'interval-id') {
+    return (
+      <>
+        <p>
+          Two notes, and you name the gap between them. There's no key here — an interval is just a
+          distance, the same one wherever it lands.
+        </p>
+        <p>
+          Listen for <strong className="text-ink">width</strong> first, then colour. Is it a step, a
+          reach, or a leap? Only then ask whether it sounds bright or shaded.
+        </p>
+      </>
+    );
+  }
+  if (kind === 'read-note') {
+    return (
+      <>
+        <p>
+          Don't count up from the bottom line. Find the nearest{' '}
+          <strong className="text-ink">landmark</strong> you already know and read one or two steps
+          from it.
+        </p>
+        <p>
+          In the treble clef the curl of the clef wraps around <strong className="text-ink">G</strong>.
+          In the bass clef the two dots sit either side of <strong className="text-ink">F</strong>.
+          Middle C is one ledger line below the treble stave, and one above the bass.
+        </p>
+        <p className="text-subtle">Answer with the letter keys if you're on a keyboard.</p>
+      </>
+    );
+  }
+  if (droning) {
+    return (
+      <>
+        <p>
+          That steady tone underneath is <strong className="text-ink">home</strong>. It never
+          changes, so you don't have to remember anything — you just compare.
+        </p>
+        <p>
+          A note that <em>is</em> home blends into the drone and almost disappears. Every other note
+          sits against it and creates a little friction.
+        </p>
+      </>
+    );
+  }
+  if (kind === 'sing-home' || kind === 'sing-back' || kind === 'sing-degree') {
+    return (
+      <>
+        <p>
+          Nothing plays while you sing — the reference stops first, so you're producing the note
+          from memory rather than matching one that's still ringing.
+        </p>
+        <p>
+          <strong className="text-ink">Any octave counts.</strong> Sing it wherever it sits
+          comfortably; the app only cares that it's the right note.
+        </p>
+        <p className="text-subtle">Headphones help. Hold it steady for about a second to pass.</p>
+      </>
+    );
+  }
+  return (
+    <>
+      <p>
+        The chords at the start plant <strong className="text-ink">home</strong> in your ear. Then
+        the question plays, and you hold home in your head rather than hear it.
+      </p>
+      <p>
+        Don't count intervals. Ask instead: has this note arrived, or does it want to move? That
+        instinct is the whole skill.
+      </p>
+      {minor && (
+        <p>
+          This key is <strong className="text-ink">minor</strong> — the third, sixth and seventh all
+          sit a semitone lower, which is what makes it sound darker.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -643,12 +730,15 @@ function promptFor(q: Question | null, filled: number, total: number): string {
       return 'Settled, or restless?';
     case 'which-is-home':
       return 'Which one was home?';
+    case 'interval-id':
+      return 'How far apart were they?';
+    case 'read-note':
+      return 'What note is this?';
     default:
       return total > 1 ? `Name note ${filled + 1} of ${total}` : 'Which note was that?';
   }
 }
 
-/** Answer slots for multi-note questions, with the verdict per slot. */
 function SlotRow({
   total,
   picked,
@@ -710,18 +800,15 @@ function SlotRow({
   );
 }
 
-/** Lozenges for a multi-note question, lighting as each note sounds. */
 function SequenceOrbs({
   count,
   playing,
-  phase,
   highlightAnswer,
   answerIndex,
   pickedIndex,
 }: {
   count: number;
   playing: number;
-  phase: Phase;
   highlightAnswer: boolean;
   answerIndex: number;
   pickedIndex: number;
@@ -738,9 +825,7 @@ function SequenceOrbs({
               : 'border-line text-subtle'
           : active
             ? 'border-accent text-accent'
-            : phase === 'wrong'
-              ? 'border-line text-subtle'
-              : 'border-line text-subtle';
+            : 'border-line text-subtle';
         return (
           <div
             key={i}

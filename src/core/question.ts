@@ -7,6 +7,15 @@
  */
 
 import { isSingKind, type Level, type LevelKind } from './levels';
+import { INTERVAL_CHARACTER, INTERVAL_LONG, INTERVAL_SHORT } from './intervals';
+import {
+  LETTERS,
+  indexToMidi,
+  indexToName,
+  letterOf,
+  type Clef,
+  type Letter,
+} from './reading';
 import {
   RESTFUL,
   degreeLabel,
@@ -30,6 +39,12 @@ export type Question = {
   correctIds: string[];
   /** For sing levels: the degree you have to produce. */
   target?: Deg;
+  /** Absolute pitches, for questions that don't live in a key. */
+  midis?: number[];
+  /** Play the notes together rather than one after another. */
+  simultaneous?: boolean;
+  /** What to draw, for reading questions. */
+  staff?: { index: number; clef: Clef };
   /** Shown as the headline in feedback. */
   answerLabel: string;
   /** One line under it, explaining *why*. */
@@ -53,6 +68,8 @@ export function generate(
   weights?: Map<Deg, number>,
 ): Question {
   if (isSingKind(level.kind)) return sing(level, previous, weights);
+  if (level.kind === 'interval-id') return intervalId(level);
+  if (level.kind === 'read-note') return readNote(level);
 
   switch (level.kind) {
     case 'home-or-not':
@@ -204,6 +221,71 @@ function nameTheNote(level: Level, previous: Deg | null, weights?: Map<Deg, numb
   };
 }
 
+/**
+ * Two notes, and you name the gap. Roots are drawn from a middle register so
+ * nothing lands somewhere unhearable, and a descending question genuinely
+ * descends rather than being an ascending one relabelled — falling intervals
+ * are a distinctly different skill and most people are much worse at them.
+ */
+function intervalId(level: Level): Question {
+  const sizes = level.intervalSet ?? [7, 12];
+  const size = pickRandom(sizes);
+  const dir =
+    level.intervalDirection === 'both'
+      ? pickRandom(['up', 'down'] as const)
+      : (level.intervalDirection ?? 'up');
+
+  // G3-G4 for the root, leaving room for an octave either way.
+  const root = 55 + Math.floor(Math.random() * 13);
+  const other = dir === 'down' ? root - size : root + size;
+
+  return {
+    kind: 'interval-id',
+    sequence: [],
+    octaveUp: [],
+    midis: [root, other],
+    simultaneous: dir === 'harmonic',
+    options: sizes.map((n) => ({
+      id: String(n),
+      primary: INTERVAL_SHORT[n],
+      secondary: INTERVAL_LONG[n].replace('Perfect ', 'P').replace('Major ', 'Maj ').replace('Minor ', 'Min '),
+    })),
+    correctIds: [String(size)],
+    answerLabel: INTERVAL_LONG[size],
+    explain: INTERVAL_CHARACTER[size],
+  };
+}
+
+/** One note on a stave, and you name the letter. */
+function readNote(level: Level): Question {
+  const clef: Clef =
+    level.clef === 'both' ? pickRandom(['treble', 'bass'] as const) : (level.clef ?? 'treble');
+
+  let pool = level.readNotes;
+  if (!pool || pool.length === 0) {
+    const [lo, hi] = level.readRange ?? [28, 35];
+    pool = [];
+    for (let i = lo; i <= hi; i++) pool.push(i);
+  }
+  const index = pickRandom(pool);
+  const letter = letterOf(index);
+
+  return {
+    kind: 'read-note',
+    sequence: [],
+    octaveUp: [],
+    midis: [indexToMidi(index)],
+    staff: { index, clef },
+    options: LETTERS.map((l: Letter) => ({ id: l, primary: l })),
+    correctIds: [letter],
+    answerLabel: indexToName(index),
+    explain:
+      clef === 'treble'
+        ? 'Treble clef. Read it against the G that the clef curls around.'
+        : 'Bass clef. Read it against the F between the two dots.',
+  };
+}
+
 /** The degree an option represents, when there is one. Used for playback. */
 export function degreeForOption(q: Question, optionId: string): Deg | null {
   switch (q.kind) {
@@ -228,6 +310,10 @@ export function singDegrees(q: Question): Deg[] {
  */
 export function blamedDegrees(q: Question, answer: string[]): Deg[] {
   if (isSingKind(q.kind)) return singDegrees(q);
+  // Intervals are keyed by size in semitones; read-note by diatonic index.
+  // Both live in their own course, so the key spaces never collide.
+  if (q.kind === 'interval-id') return [Number(q.correctIds[0])];
+  if (q.kind === 'read-note') return q.staff ? [q.staff.index] : [];
   if (q.kind === 'which-is-home') {
     const picked = degreeForOption(q, answer[0] ?? '0');
     return picked === null ? [q.sequence[0]] : [picked];

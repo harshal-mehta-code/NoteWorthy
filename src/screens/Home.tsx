@@ -1,168 +1,111 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Card, Label, Screen, Sheet } from '@/components/ui';
-import { LEVELS, STAGE_BLURB, STAGE_LABEL, STAGES, getLevel, isSingKind } from '@/core/levels';
-import { degreeLabel, type Deg, type Mode } from '@/core/music';
-import { recentAccuracy, useStore } from '@/store/useStore';
+import { Button, Card, Label, Screen } from '@/components/ui';
+import { COURSES, getCourse, statKey, PILLAR_LABEL, READY_COURSES } from '@/core/courses';
+import { findLevel } from '@/core/levels';
+import { LESSONS } from '@/content/lessons';
+import { levelFor, recentAccuracy, useStore } from '@/store/useStore';
 import { unlockAudio } from '@/audio/engine';
 
 /**
- * One screen, one action. Everything else on it is status, and status is
- * kept to a single line each — the moment Home becomes a dashboard it stops
- * being obvious what to do next.
+ * Today.
+ *
+ * One obvious action, and a short row of everything else you could do. The
+ * previous version offered exactly one course with no hint that others
+ * existed, which made a four-pillar app read as a single drill.
  */
 export default function Home() {
   const navigate = useNavigate();
-  const level = useStore((s) => s.level);
+  const progress = useStore((s) => s.progress);
   const stats = useStore((s) => s.stats);
+  const lastCourse = useStore((s) => s.lastCourse);
+  const lessonsDone = useStore((s) => s.lessonsDone);
   const streakDays = useStore((s) => s.streakDays);
   const totalSessions = useStore((s) => s.totalSessions);
-  const setLevel = useStore((s) => s.setLevel);
-  const [picking, setPicking] = useState(false);
 
-  const current = getLevel(level);
-  const accuracy = recentAccuracy(stats[level]);
+  const course = getCourse(lastCourse) ?? COURSES[0];
+  const level = levelFor(progress, course.id);
+  const config = course.levels.length ? findLevel(course.levels, level) : null;
+  const accuracy = recentAccuracy(stats[statKey(course.id, level)]);
+
+  const nextLesson = LESSONS.find((l) => !lessonsDone.includes(l.id));
 
   async function start() {
+    if (course.id === 'theory') {
+      navigate(`/learn/${(nextLesson ?? LESSONS[0]).id}`);
+      return;
+    }
     await unlockAudio();
-    navigate('/practice');
+    navigate(`/practice/${course.id}`);
   }
 
+  const others = READY_COURSES.filter((c) => c.id !== course.id);
 
   return (
-    <Screen className="pad-top pad-bottom">
+    <Screen className="pad-top">
       <header className="flex items-center justify-between py-2">
         <span className="text-[15px] font-bold tracking-tight">NoteWorthy</span>
-        <button
-          onClick={() => navigate('/settings')}
-          aria-label="Settings"
-          className="label text-subtle transition hover:text-ink"
-        >
-          Settings
-        </button>
+        {streakDays > 0 && (
+          <span className="label text-subtle">
+            {streakDays} {streakDays === 1 ? 'day' : 'days'} in a row
+          </span>
+        )}
       </header>
 
-      <div className="flex flex-1 flex-col justify-center py-8">
-        <Label className="text-accent">{STAGE_LABEL[current.stage]}</Label>
-        <h1 className="mt-3 text-[36px] leading-[1.05] font-bold tracking-[-0.04em] text-balance">
-          {current.name}
+      <div className="flex flex-1 flex-col justify-center py-6">
+        <Label className="text-accent">
+          {totalSessions === 0 ? 'Start here' : 'Continue'} · {PILLAR_LABEL[course.pillar]}
+        </Label>
+        <h1 className="mt-3 text-[34px] leading-[1.05] font-bold tracking-[-0.04em] text-balance">
+          {course.id === 'theory' ? (nextLesson?.title ?? 'Foundations') : config?.name}
         </h1>
-        <p className="mt-4 text-[16px] leading-relaxed text-muted">{current.blurb}</p>
+        <p className="mt-4 text-[16px] leading-relaxed text-muted">
+          {course.id === 'theory' ? (nextLesson?.blurb ?? course.blurb) : config?.blurb}
+        </p>
 
-        <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2">
-          {isSingKind(current.kind) ? (
-            <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
-              Needs a microphone
-            </span>
-          ) : current.drone ? (
-            <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
-              Drone holds home
-            </span>
-          ) : (
-            <DegreePreview degrees={current.degrees} mode={current.mode} />
-          )}
-          {accuracy !== null && (
-            <span className="tnum font-mono text-xs text-subtle">
-              {Math.round(accuracy * 100)}% lately
-            </span>
-          )}
-        </div>
+        {accuracy !== null && (
+          <p className="mt-5 font-mono text-xs text-subtle">
+            {course.name} · level {level} · {Math.round(accuracy * 100)}% lately
+          </p>
+        )}
 
         {totalSessions === 0 && (
-          <Card tone="accent" className="mt-7">
+          <Card tone="accent" className="mt-6">
             <p className="text-[15px] leading-relaxed">
-              A round is {current.roundLength} questions and takes under a minute. There's no timer
-              and no way to fail.
+              A round is under a minute. There's no timer and no way to fail — and there's a lot
+              more than this one drill, all of it under Practice.
             </p>
           </Card>
         )}
+
+        <div className="mt-6">
+          <Button onClick={start}>
+            {totalSessions === 0 ? 'Start your first round' : 'Continue'}
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-3 pb-2">
-        <Button onClick={start}>
-          {totalSessions === 0 ? 'Start your first round' : 'Start a round'}
-        </Button>
-        <button
-          onClick={() => setPicking(true)}
-          className="w-full py-1 text-center text-sm text-subtle transition hover:text-ink"
-        >
-          Level {level} of {LEVELS.length} — change
-        </button>
-        {streakDays > 0 && (
-          <p className="pt-1 text-center text-sm text-subtle">
-            {streakDays} {streakDays === 1 ? 'day' : 'days'} in a row
-          </p>
-        )}
-      </div>
-
-      <Sheet open={picking} onClose={() => setPicking(false)} title="Choose a level">
-        <p>
-          The first four teach you to <em>find</em> home, with a drone holding it underneath. The
-          middle five take the drone away and ask you to name what you hear. The last five stop
-          being gentle.
-        </p>
-        <p className="text-subtle">Nothing is locked — jump around freely.</p>
-
-        <div className="space-y-5 pt-1">
-          {STAGES.map((stage) => (
-            <div key={stage}>
-              <Label className="text-accent">{STAGE_LABEL[stage]}</Label>
-              <p className="mt-1 mb-2.5 text-[13px] text-subtle">{STAGE_BLURB[stage]}</p>
-              <div className="space-y-2">
-                {LEVELS.filter((l) => l.stage === stage).map((l) => {
-                  const acc = recentAccuracy(stats[l.id]);
-                  const active = l.id === level;
-                  return (
-                    <button
-                      key={l.id}
-                      onClick={() => {
-                        setLevel(l.id);
-                        setPicking(false);
-                      }}
-                      className={`w-full rounded-xl border p-3.5 text-left transition ${
-                        active
-                          ? 'border-accent bg-accent-wash'
-                          : 'border-line bg-surface hover:border-line-strong'
-                      }`}
-                    >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className={`font-semibold ${active ? 'text-accent' : 'text-ink'}`}>
-                          {l.id}. {l.name}
-                        </span>
-                        <span className="tnum shrink-0 font-mono text-[11px] text-subtle">
-                          {acc === null ? '' : `${Math.round(acc * 100)}%`}
-                        </span>
-                      </div>
-                      <span className="mt-1 block text-[13px] leading-snug text-muted">
-                        {l.blurb}
-                      </span>
-                      {isSingKind(l.kind) && (
-                        <span className="label mt-1.5 block text-cool">Microphone</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+      <div className="pb-6">
+        <Label className="mb-2.5">Or something else</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {others.map((c) => (
+            <button
+              key={c.id}
+              onClick={async () => {
+                if (c.id === 'theory') {
+                  navigate(`/learn/${(nextLesson ?? LESSONS[0]).id}`);
+                  return;
+                }
+                await unlockAudio();
+                navigate(`/practice/${c.id}`);
+              }}
+              className="rounded-xl border border-line bg-surface p-3 text-left transition hover:border-line-strong hover:bg-surface-2"
+            >
+              <span className="block text-[14px] font-semibold">{c.name}</span>
+              <span className="label mt-0.5 block text-subtle">{PILLAR_LABEL[c.pillar]}</span>
+            </button>
           ))}
         </div>
-      </Sheet>
+      </div>
     </Screen>
-  );
-}
-
-/** The notes in play at this level, as a row of chips. */
-function DegreePreview({ degrees, mode }: { degrees: Deg[]; mode: Mode }) {
-  return (
-    <div className="flex flex-wrap gap-1.5" aria-label={`${degrees.length} notes in play`}>
-      {degrees.map((d) => (
-        <span
-          key={d}
-          className="tnum grid h-7 min-w-7 place-items-center rounded-lg border border-line bg-surface px-1.5 font-mono text-[12px] text-muted"
-        >
-          {degreeLabel(d, mode)}
-        </span>
-      ))}
-    </div>
   );
 }

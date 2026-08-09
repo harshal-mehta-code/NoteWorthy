@@ -31,7 +31,11 @@ export type LevelKind =
   /** Sing back the note you just heard. */
   | 'sing-back'
   /** Sing a named note of the key, with nothing to copy. */
-  | 'sing-degree';
+  | 'sing-degree'
+  /** Two notes play. How far apart were they? */
+  | 'interval-id'
+  /** A note is drawn on a stave. What is it called? */
+  | 'read-note';
 
 /** Kinds that need the microphone. */
 export function isSingKind(kind: LevelKind): boolean {
@@ -91,6 +95,18 @@ export type Level = {
   /** How far out of tune a sung note may be, in cents. */
   singTolerance: number;
   roundLength: number;
+
+  // --- interval-id only -------------------------------------------------
+  /** Interval sizes in play, in semitones (1-12). */
+  intervalSet?: number[];
+  intervalDirection?: 'up' | 'down' | 'both' | 'harmonic';
+
+  // --- read-note only ---------------------------------------------------
+  clef?: 'treble' | 'bass' | 'both';
+  /** Inclusive diatonic-index range of notes in play. See core/reading.ts. */
+  readRange?: [number, number];
+  /** An explicit subset of that range, for the landmark levels. */
+  readNotes?: number[];
 };
 
 const MAJOR = DIATONIC.major;
@@ -115,7 +131,7 @@ function level(
   };
 }
 
-export const LEVELS: Level[] = [
+export const FIND_THE_NOTE: Level[] = [
   // ---------------------------------------------------------- finding home
   level({
     id: 1,
@@ -311,6 +327,12 @@ export const LEVELS: Level[] = [
 export const PROMOTE_ACCURACY = 0.85;
 export const PROMOTE_MIN_ITEMS = 16;
 
+/** Kept for the Find the Note ladder specifically. */
 export function getLevel(id: number): Level {
-  return LEVELS.find((l) => l.id === id) ?? LEVELS[0];
+  return FIND_THE_NOTE.find((l) => l.id === id) ?? FIND_THE_NOTE[0];
+}
+
+/** Look a level up inside whichever ladder it belongs to. */
+export function findLevel(levels: Level[], id: number): Level {
+  return levels.find((l) => l.id === id) ?? levels[0];
 }

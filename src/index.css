@@ -28,6 +28,11 @@
   --nw-wrong: #e5736b;
   --nw-wrong-wash: rgb(229 115 107 / 0.12);
 
+  /* Piano keys are their own thing: a white key stays light in both
+     themes, because a dark piano key is not a piano key. */
+  --key-white: #e6e9ec;
+  --key-black: #14171a;
+
   color-scheme: dark;
 }
 
@@ -56,6 +61,9 @@
     --nw-wrong: #c0453c;
     --nw-wrong-wash: rgb(192 69 60 / 0.1);
 
+    --key-white: #ffffff;
+    --key-black: #2b3036;
+
     color-scheme: light;
   }
 }
@@ -81,6 +89,8 @@
   --nw-correct-wash: rgb(47 141 87 / 0.12);
   --nw-wrong: #c0453c;
   --nw-wrong-wash: rgb(192 69 60 / 0.1);
+  --key-white: #ffffff;
+  --key-black: #2b3036;
   color-scheme: light;
 }
 
@@ -104,6 +114,8 @@
   --nw-correct-wash: rgb(91 201 139 / 0.14);
   --nw-wrong: #e5736b;
   --nw-wrong-wash: rgb(229 115 107 / 0.12);
+  --key-white: #e6e9ec;
+  --key-black: #14171a;
   color-scheme: dark;
 }
 

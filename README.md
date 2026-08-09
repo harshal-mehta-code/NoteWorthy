@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.3 shipped.** The first drill — **Find the Note** — is built and deployed across seventeen levels, and now includes sung answers. Sight reading and theory are still planned.
+**Status: v0.4 shipped.** Four courses across all four pillars, plus a Practice library showing the whole shape of the app.
 
 ```bash
 npm install
@@ -17,9 +17,9 @@ npm run dev
 
 | | |
 |---|---|
-| 🎧 **Ear training** | Hearing where a note sits inside a key first, intervals second, building to chord quality, inversions, and progression dictation. **Built.** |
-| 👁 **Sight reading** *(planned)* | Landmark recognition → contour → rhythm → scrolling reads that never stop, plus **eye-span** training that attacks the real bottleneck. |
-| 🧠 **Music theory** *(planned)* | Bite-sized interactive lessons, every concept bound to an ear, reading, and vocal drill. |
+| 🎧 **Ear training** | **Find the Note** (17 levels) and **Intervals** (8 levels). Still to come: chords and progressions. |
+| 👁 **Sight reading** *(started)* | Naming notes on the stave by landmark, both clefs and ledger lines. Still to come: rhythm, and scrolling reads that never stop. |
+| 🧠 **Music theory** *(started)* | Four interactive lessons with a playable keyboard. More of the curriculum to follow. |
 | 🎤 **Vocal training** *(started)* | Live pitch feedback and sung answers are in. Still to come: interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
 
 ## What makes it different
@@ -36,7 +36,9 @@ npm run dev
 
 ## What's built
 
-**Find the Note** — seventeen levels across four stages.
+**Four courses, one per pillar**, all reachable from a Practice library that also lists what's still planned — hiding the unbuilt parts made a seventeen-level app look like a one-trick toy.
+
+### 🎧 Find the Note — seventeen levels across four stages
 
 **Stage 1, finding home.** A drone holds the home note underneath, so you *compare* rather than remember. Was that note home? Then: settled, or restless? Then the drone comes off and you pick home out of three. This stage exists because naming notes assumes you can already find home, and nothing was teaching that.
 
@@ -45,6 +47,17 @@ npm run dev
 **Stage 3, going deeper.** Two- and three-note phrases, minor keys, chromatic colour notes (♭7 and ♯4), and finally a level that changes key on every question so there's nothing to settle into.
 
 **Stage 4, your voice.** Stop picking answers and produce them: sing home, sing back a note you just heard, then sing a note you're only *told*. Graded by live pitch detection, on pitch class — so any octave counts. Needs a microphone; every other level works without one.
+
+### 🎧 Intervals — eight levels
+Name the distance between two notes: fifths and octaves first, then thirds, steps, the tritone, and finally every interval inside an octave — ascending, descending, and both at once. Deliberately the *second* ear course, not the first: interval training in isolation produces people who ace interval quizzes and still can't work out a song.
+
+### 👁 Read the Note — seven levels
+Name notes on the stave, built on **landmarks** rather than "Every Good Boy Deserves Fudge" — mnemonics force you to count up one line at a time, a habit you then have to unlearn. Treble, then ledger lines, then bass, then both clefs unannounced. Answer with the letter keys.
+
+### 🧠 Foundations — four lessons
+Short interactive lessons with a keyboard you can play: how the keyboard is laid out, half and whole steps, what makes a scale major, and why one note feels like home. Every lesson ends by pointing at the drill where the same idea turns up.
+
+---
 
 - **Sampled piano**, with a synth fallback so the app always makes sound
 - **Live pitch detection** written from scratch (McLeod / NSDF), unit-tested against synthesized tones
@@ -57,7 +70,7 @@ npm run dev
 - Local-first: no account, nothing leaves the browser
 - Installable PWA, works offline
 
-Deliberately **not** built yet: tab bar, skill map, XP, achievements, the daily Warm-Up mix. They arrive when there's more than one drill to tie together — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
+Deliberately **not** built yet: skill map, XP, achievements, the daily Warm-Up mix. Five more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
 
 ## Documentation
 
@@ -83,7 +96,7 @@ open prototype/index.html      # macOS
 xdg-open prototype/index.html  # Linux
 ```
 
-Six screens covering all four pillars. Its ear-training screen is **superseded by the real app** — go there for that. The prototype remains the reference for the five screens not yet built: Today, Scroll Reading, Sight-Singing with a pitch trace, the Musicianship Map, and a Theory lesson.
+Six screens covering all four pillars. Its ear training, theory and Today screens are now **superseded by the real app**. It remains the reference for what isn't built: Scroll Reading with its lookahead veil, sight-singing with a pitch trace over the stave, and the Musicianship Map.
 
 Rendered captures of every screen live in [`prototype/screens/`](prototype/screens). See [`prototype/README.md`](prototype/README.md) for what's real vs. mocked, and for the mapping from prototype shortcuts to real implementations — **the prototype is authoritative for look and feel, the docs are authoritative for behavior.**
 

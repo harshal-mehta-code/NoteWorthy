@@ -6,6 +6,10 @@ Short doc, two rules. Both came out of prototype feedback: the app had too many 
 
 ## 1. Navigation: one path, one action
 
+> **Revised at v0.4.** The rules below were written when the app had one drill, and they were right then. With four courses across four pillars they went wrong in the opposite direction: a seventeen-level app with its other courses behind a small "change level" link reads as a one-trick toy. Tabs and a Practice library are now in. What has *not* changed is rule 2 — a drill still carries no navigation at all.
+>
+> The library also lists **planned** courses, greyed and honest, because the fastest way to make an app look thin is to hide everything it is going to be.
+
 The prototype showed four tab bars' worth of destinations before a single drill existed. That's backwards. The shipped structure is a **line, not a hub**:
 
 ```

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Button, Card, Label, Screen } from '@/components/ui';
-import { LEVELS, STAGE_LABEL, getLevel } from '@/core/levels';
+import { STAGE_LABEL, findLevel } from '@/core/levels';
+import { getCourse, statKey, COURSES } from '@/core/courses';
+import { INTERVAL_LONG } from '@/core/intervals';
+import { indexToName } from '@/core/reading';
 import { degreeLabel, degreeNickname, degreeSolfege, type Deg, type Mode } from '@/core/music';
 import {
   degreeReport,
@@ -15,13 +18,14 @@ import { playLevelUp } from '@/audio/engine';
 export default function Summary() {
   const navigate = useNavigate();
   const session = useStore((s) => s.lastSession);
-  const level = useStore((s) => s.level);
   const setLevel = useStore((s) => s.setLevel);
   const streakDays = useStore((s) => s.streakDays);
   const allDegreeStats = useStore((s) => s.degreeStats);
   const [promoted, setPromoted] = useState(false);
 
-  const canLevelUp = session?.promoted && level < LEVELS.length && !promoted;
+  const course = getCourse(session?.courseId ?? '') ?? COURSES[0];
+  const level = session?.levelId ?? 1;
+  const canLevelUp = session?.promoted && level < course.levels.length && !promoted;
 
   useEffect(() => {
     if (!session?.promoted) return;
@@ -31,12 +35,12 @@ export default function Summary() {
 
   if (!session) return <Navigate to="/" replace />;
 
-  const config = getLevel(session.levelId);
-  const degreeStats = allDegreeStats[session.levelId];
+  const config = findLevel(course.levels, session.levelId);
+  const degreeStats = allDegreeStats[statKey(session.courseId, session.levelId)];
   const pct = Math.round((session.correct / session.total) * 100);
 
   function levelUp() {
-    setLevel(level + 1);
+    setLevel(course.id, level + 1);
     setPromoted(true);
   }
 
@@ -50,14 +54,14 @@ export default function Summary() {
             <span className="text-subtle">/{session.total}</span>
           </p>
           <p className="mt-3 text-[15px] text-muted">
-            {config.name} · {pct}% this round
+            {course.name} · {config.name} · {pct}% this round
           </p>
         </div>
 
         <Card tone="cool">
           <Label className="text-cool">One thing worth knowing</Label>
           <p className="mt-2.5 text-[15px] leading-relaxed">
-            {observation(session, degreeStats, config.mode)}
+            {observation(session, degreeStats, config.mode, config.kind)}
           </p>
         </Card>
 
@@ -69,7 +73,7 @@ export default function Summary() {
           <Card tone="accent">
             <Label className="text-accent">You're ready</Label>
             <p className="mt-2.5 text-[15px] leading-relaxed">
-              You've been holding 85%+ at this level. {whatsNext(level)}
+              You've been holding 85%+ at this level. {whatsNext(course.levels, level)}
             </p>
             <Button className="mt-4" onClick={levelUp}>
               Move to level {level + 1}
@@ -80,14 +84,16 @@ export default function Summary() {
         {promoted && (
           <Card tone="accent">
             <p className="text-[15px] leading-relaxed">
-              You're on level {level} now — {getLevel(level).blurb.toLowerCase()}
+              You're on level {level} now — {findLevel(course.levels, level).blurb.toLowerCase()}
             </p>
           </Card>
         )}
       </div>
 
       <div className="space-y-3 pb-2">
-        <Button onClick={() => navigate('/practice', { replace: true })}>Another round</Button>
+        <Button onClick={() => navigate(`/practice/${course.id}`, { replace: true })}>
+          Another round
+        </Button>
         <Button variant="ghost" onClick={() => navigate('/', { replace: true })}>
           Done for now
         </Button>
@@ -110,22 +116,32 @@ function observation(
   s: SessionResult,
   stats: Record<number, DegreeStat> | undefined,
   mode: Mode,
+  kind: string,
 ): string {
+  /** Items mean different things in different courses. */
+  const name = (item: number) =>
+    kind === 'interval-id'
+      ? INTERVAL_LONG[item]
+      : kind === 'read-note'
+        ? indexToName(item)
+        : `${degreeLabel(item, mode)} · ${degreeSolfege(item)}`;
+  const nickname = (item: number) =>
+    kind === 'interval-id' || kind === 'read-note' ? '' : ` — ${degreeNickname(item, mode)}`;
+
   const weakest = weakestDegree(stats, 5);
 
   if (weakest && weakest.accuracy < 0.75) {
-    const name = `${degreeLabel(weakest.deg, mode)} · ${degreeSolfege(weakest.deg)}`;
     const rate = Math.round(weakest.accuracy * 100);
     if (weakest.trend === 'improving') {
-      return `${name} is still your weakest at ${rate}% across ${weakest.attempts} tries — but it's climbing. Keep going.`;
+      return `${name(weakest.deg)} is still your weakest at ${rate}% across ${weakest.attempts} tries — but it's climbing. Keep going.`;
     }
-    return `Across every round at this level, ${name} is your weakest at ${rate}% — ${degreeNickname(weakest.deg, mode)}. It'll come up more often now.`;
+    return `Across every round at this level, ${name(weakest.deg)} is your weakest at ${rate}%${nickname(weakest.deg)}. It'll come up more often now.`;
   }
 
   const climbing = improvingDegree(stats);
   if (climbing !== null) {
     const report = degreeReport(stats, climbing);
-    return `${degreeLabel(climbing, mode)} · ${degreeSolfege(climbing)} has come good — ${Math.round((report?.accuracy ?? 0) * 100)}% now, and clearly better than it was.`;
+    return `${name(climbing)} has come good — ${Math.round((report?.accuracy ?? 0) * 100)}% now, and clearly better than it was.`;
   }
 
   if (s.correct === s.total) {
@@ -134,7 +150,7 @@ function observation(
 
   const worst = s.weakDegrees[0];
   if (worst !== undefined) {
-    return `${degreeLabel(worst, mode)} · ${degreeSolfege(worst)} caught you out most this round — ${degreeNickname(worst, mode)}.`;
+    return `${name(worst)} caught you out most this round${nickname(worst)}.`;
   }
 
   if (s.bestStreak >= 5) {
@@ -208,9 +224,9 @@ function NoteAccuracy({
 }
 
 /** What level+1 actually changes, said plainly. */
-function whatsNext(level: number): string {
-  const current = getLevel(level);
-  const next = getLevel(level + 1);
+function whatsNext(levels: Parameters<typeof findLevel>[0], level: number): string {
+  const current = findLevel(levels, level);
+  const next = findLevel(levels, level + 1);
 
   if (current.stage !== next.stage) {
     return `Next comes ${STAGE_LABEL[next.stage].toLowerCase()} — ${next.blurb.toLowerCase()}`;

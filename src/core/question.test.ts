@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEVELS, getLevel, isSingKind } from './levels';
+import { FIND_THE_NOTE as LEVELS, getLevel, isSingKind } from './levels';
 import { blamedDegrees, generate, singDegrees, slotCount } from './question';
 import { DIATONIC } from './music';
 

@@ -1,10 +1,14 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router';
 import { useStore } from '@/store/useStore';
+import { TabBar } from '@/components/TabBar';
 import Welcome from '@/screens/Welcome';
 import Home from '@/screens/Home';
+import PracticeLibrary from '@/screens/PracticeLibrary';
 import Practice from '@/screens/Practice';
+import Lesson from '@/screens/Lesson';
 import Summary from '@/screens/Summary';
+import You from '@/screens/You';
 import Settings from '@/screens/Settings';
 
 /** Applies the theme choice, and keeps the browser chrome colour in step. */
@@ -25,10 +29,25 @@ function useTheme() {
   }, [theme]);
 }
 
-/** Nobody reaches the app proper until they've been shown what it is. */
 function RequireOnboarding({ children }: { children: React.ReactNode }) {
   const done = useStore((s) => s.hasOnboarded);
   return done ? <>{children}</> : <Navigate to="/welcome" replace />;
+}
+
+/**
+ * Tabs wrap the browsing screens only. A drill, a lesson and the summary all
+ * take the whole display — chrome during an exercise is the one thing the
+ * design rules are unambiguous about (docs/07-UX-AND-LANGUAGE.md §1).
+ */
+function TabbedLayout() {
+  return (
+    <div className="flex min-h-full flex-col">
+      <div className="flex-1">
+        <Outlet />
+      </div>
+      <TabBar />
+    </div>
+  );
 }
 
 export default function App() {
@@ -38,38 +57,32 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/welcome" element={<Welcome />} />
+
         <Route
-          path="/"
           element={
             <RequireOnboarding>
-              <Home />
+              <TabbedLayout />
             </RequireOnboarding>
           }
-        />
+        >
+          <Route path="/" element={<Home />} />
+          <Route path="/practice" element={<PracticeLibrary />} />
+          <Route path="/you" element={<You />} />
+        </Route>
+
         <Route
-          path="/practice"
           element={
             <RequireOnboarding>
-              <Practice />
+              <Outlet />
             </RequireOnboarding>
           }
-        />
-        <Route
-          path="/summary"
-          element={
-            <RequireOnboarding>
-              <Summary />
-            </RequireOnboarding>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <RequireOnboarding>
-              <Settings />
-            </RequireOnboarding>
-          }
-        />
+        >
+          <Route path="/practice/:courseId" element={<Practice />} />
+          <Route path="/learn/:lessonId" element={<Lesson />} />
+          <Route path="/summary" element={<Summary />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { LEVELS, PROMOTE_ACCURACY, PROMOTE_MIN_ITEMS, type IntroMode } from '@/core/levels';
+import { PROMOTE_ACCURACY, PROMOTE_MIN_ITEMS, type IntroMode } from '@/core/levels';
+import { getCourse, statKey } from '@/core/courses';
 import type { Deg } from '@/core/music';
 
 export type LabelStyle = 'numbers' | 'solfege';
@@ -14,15 +15,16 @@ export type LevelStats = {
   total: number;
 };
 
-/** Per-note history within a level, which is what the adaptation runs on. */
+/** Per-item history within a level, which is what the adaptation runs on. */
 export type DegreeStat = { right: number; wrong: number; recent: boolean[] };
 
 export type SessionResult = {
+  courseId: string;
   levelId: number;
   correct: number;
   total: number;
   bestStreak: number;
-  /** Degrees involved in this round's mistakes, most-missed first. */
+  /** Items involved in this round's mistakes, most-missed first. */
   weakDegrees: Deg[];
   promoted: boolean;
   finishedAt: number;
@@ -30,16 +32,21 @@ export type SessionResult = {
 
 type State = {
   hasOnboarded: boolean;
-  level: number;
-  /** 'auto' follows the level's own setting. */
+  /** Current level per course. */
+  progress: Record<string, number>;
+  /** The course the user was last in, so Today can offer to continue it. */
+  lastCourse: string;
+  lessonsDone: string[];
+
   introOverride: IntroMode | 'auto';
   keyMode: KeyMode;
   keyName: string;
   labelStyle: LabelStyle;
   theme: ThemeChoice;
 
-  stats: Record<number, LevelStats>;
-  degreeStats: Record<number, Record<number, DegreeStat>>;
+  /** Keyed `courseId:levelId`. */
+  stats: Record<string, LevelStats>;
+  degreeStats: Record<string, Record<number, DegreeStat>>;
   streakDays: number;
   lastPracticeDay: string | null;
   totalSessions: number;
@@ -47,9 +54,10 @@ type State = {
   lastSession: SessionResult | null;
 
   completeOnboarding: () => void;
-  recordAnswer: (levelId: number, correct: boolean, degrees: Deg[]) => void;
+  recordAnswer: (courseId: string, levelId: number, correct: boolean, items: Deg[]) => void;
   finishSession: (result: Omit<SessionResult, 'promoted' | 'finishedAt'>) => SessionResult;
-  setLevel: (id: number) => void;
+  setLevel: (courseId: string, id: number) => void;
+  markLessonDone: (id: string) => void;
   setIntroOverride: (m: IntroMode | 'auto') => void;
   setKeyMode: (m: KeyMode) => void;
   setKeyName: (n: string) => void;
@@ -67,24 +75,21 @@ function dayKey(offsetDays = 0): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function emptyStats(): LevelStats {
-  return { recent: [], correct: 0, total: 0 };
-}
-
-function emptyDegree(): DegreeStat {
-  return { right: 0, wrong: 0, recent: [] };
-}
+const emptyStats = (): LevelStats => ({ recent: [], correct: 0, total: 0 });
+const emptyDegree = (): DegreeStat => ({ right: 0, wrong: 0, recent: [] });
 
 const INITIAL = {
   hasOnboarded: false,
-  level: 1,
+  progress: {} as Record<string, number>,
+  lastCourse: 'find-the-note',
+  lessonsDone: [] as string[],
   introOverride: 'auto' as const,
   keyMode: 'fixed' as const,
   keyName: 'C',
   labelStyle: 'numbers' as const,
   theme: 'system' as const,
-  stats: {} as Record<number, LevelStats>,
-  degreeStats: {} as Record<number, Record<number, DegreeStat>>,
+  stats: {} as Record<string, LevelStats>,
+  degreeStats: {} as Record<string, Record<number, DegreeStat>>,
   streakDays: 0,
   lastPracticeDay: null,
   totalSessions: 0,
@@ -99,15 +104,16 @@ export const useStore = create<State>()(
 
       completeOnboarding: () => set({ hasOnboarded: true }),
 
-      recordAnswer: (levelId, correct, degrees) =>
+      recordAnswer: (courseId, levelId, correct, items) =>
         set((s) => {
-          const prev = s.stats[levelId] ?? emptyStats();
+          const key = statKey(courseId, levelId);
+          const prev = s.stats[key] ?? emptyStats();
           const recent = [...prev.recent, correct].slice(-RECENT_CAP);
 
-          const levelDegrees = { ...(s.degreeStats[levelId] ?? {}) };
-          for (const deg of degrees) {
-            const d = levelDegrees[deg] ?? emptyDegree();
-            levelDegrees[deg] = {
+          const perItem = { ...(s.degreeStats[key] ?? {}) };
+          for (const item of items) {
+            const d = perItem[item] ?? emptyDegree();
+            perItem[item] = {
               right: d.right + (correct ? 1 : 0),
               wrong: d.wrong + (correct ? 0 : 1),
               recent: [...d.recent, correct].slice(-DEGREE_RECENT_CAP),
@@ -117,20 +123,25 @@ export const useStore = create<State>()(
           return {
             stats: {
               ...s.stats,
-              [levelId]: {
+              [key]: {
                 recent,
                 correct: prev.correct + (correct ? 1 : 0),
                 total: prev.total + 1,
               },
             },
-            degreeStats: { ...s.degreeStats, [levelId]: levelDegrees },
+            degreeStats: { ...s.degreeStats, [key]: perItem },
             totalAnswers: s.totalAnswers + 1,
           };
         }),
 
       finishSession: (partial) => {
         const s = get();
-        const promoted = canPromote(s.stats[partial.levelId], partial.levelId);
+        const course = getCourse(partial.courseId);
+        const promoted = canPromote(
+          s.stats[statKey(partial.courseId, partial.levelId)],
+          partial.levelId,
+          course?.levels.length ?? 0,
+        );
 
         const today = dayKey();
         let streakDays = s.streakDays;
@@ -139,18 +150,31 @@ export const useStore = create<State>()(
         }
 
         const result: SessionResult = { ...partial, promoted, finishedAt: Date.now() };
-
         set({
           lastSession: result,
+          lastCourse: partial.courseId,
           totalSessions: s.totalSessions + 1,
           streakDays,
           lastPracticeDay: today,
         });
-
         return result;
       },
 
-      setLevel: (id) => set({ level: Math.max(1, Math.min(LEVELS.length, id)) }),
+      setLevel: (courseId, id) =>
+        set((s) => {
+          const max = getCourse(courseId)?.levels.length ?? 1;
+          return {
+            progress: { ...s.progress, [courseId]: Math.max(1, Math.min(max, id)) },
+            lastCourse: courseId,
+          };
+        }),
+
+      markLessonDone: (id) =>
+        set((s) => ({
+          lessonsDone: s.lessonsDone.includes(id) ? s.lessonsDone : [...s.lessonsDone, id],
+          lastCourse: 'theory',
+        })),
+
       setIntroOverride: (introOverride) => set({ introOverride }),
       setKeyMode: (keyMode) => set({ keyMode }),
       setKeyName: (keyName) => set({ keyName }),
@@ -160,31 +184,62 @@ export const useStore = create<State>()(
     }),
     {
       name: 'noteworthy.v1',
-      version: 2,
+      version: 3,
       migrate: (persisted, from) => {
-        const state = persisted as Partial<State>;
-        // v1 kept mistakes as scale-step numbers; v2 uses semitone offsets,
-        // so the old summary would render nonsense labels. Progress at each
-        // level is unaffected and stays.
+        const state = persisted as Record<string, unknown>;
+
+        // v1 kept mistakes as scale-step numbers; v2 uses semitone offsets.
         if (from < 2) {
-          return { ...state, lastSession: null, degreeStats: {} };
+          state.lastSession = null;
+          state.degreeStats = {};
         }
-        return state;
+
+        // v3 moved from a single global level to progress per course, and
+        // re-keyed stats by `courseId:levelId`. Everything that existed was
+        // Find the Note, so it all moves there and nothing is lost.
+        if (from < 3) {
+          const oldLevel = typeof state.level === 'number' ? state.level : 1;
+          state.progress = { 'find-the-note': oldLevel };
+          state.lastCourse = 'find-the-note';
+          state.lessonsDone = [];
+          delete state.level;
+
+          const rekey = (bag: unknown) =>
+            Object.fromEntries(
+              Object.entries((bag ?? {}) as Record<string, unknown>).map(([k, v]) => [
+                statKey('find-the-note', Number(k)),
+                v,
+              ]),
+            );
+          state.stats = rekey(state.stats);
+          state.degreeStats = rekey(state.degreeStats);
+          state.lastSession = null;
+        }
+
+        return state as unknown as State;
       },
     },
   ),
 );
+
+/** Current level for a course, defaulting to the first. */
+export function levelFor(progress: Record<string, number>, courseId: string): number {
+  return progress[courseId] ?? 1;
+}
 
 /**
  * Promotion needs a real sample of recent work, not one lucky round — and
  * the next level has to exist. Cross-session gating comes with the full
  * mastery model (docs/01-PEDAGOGY.md §6).
  */
-export function canPromote(stats: LevelStats | undefined, levelId: number): boolean {
-  if (!stats || levelId >= LEVELS.length) return false;
+export function canPromote(
+  stats: LevelStats | undefined,
+  levelId: number,
+  levelCount: number,
+): boolean {
+  if (!stats || levelId >= levelCount) return false;
   if (stats.recent.length < PROMOTE_MIN_ITEMS) return false;
-  const hits = stats.recent.filter(Boolean).length;
-  return hits / stats.recent.length >= PROMOTE_ACCURACY;
+  return stats.recent.filter(Boolean).length / stats.recent.length >= PROMOTE_ACCURACY;
 }
 
 /** Recent accuracy at a level, or null when there isn't enough history yet. */
@@ -193,26 +248,32 @@ export function recentAccuracy(stats: LevelStats | undefined): number | null {
   return stats.recent.filter(Boolean).length / stats.recent.length;
 }
 
+/** Total answers given in a course, across every level. */
+export function courseAnswers(stats: Record<string, LevelStats>, courseId: string): number {
+  return Object.entries(stats)
+    .filter(([k]) => k.startsWith(`${courseId}:`))
+    .reduce((sum, [, v]) => sum + v.total, 0);
+}
+
 /**
- * Selection weights per degree: the more you've been missing a note lately,
- * the more often it comes up. Capped at 3.5× so a weak note doesn't crowd
- * out everything else, and floored at 1 so a strong note never disappears —
+ * Selection weights per item: the more you've been missing something lately,
+ * the more often it comes up. Capped at 3.5× so a weak item doesn't crowd
+ * out everything else, and floored at 1 so a strong one never disappears —
  * practising only your weak spots lets the strong ones quietly rot.
  */
 export function degreeWeights(
   degreeStats: Record<number, DegreeStat> | undefined,
-  degrees: Deg[],
+  items: Deg[],
 ): Map<Deg, number> {
   const weights = new Map<Deg, number>();
-  for (const deg of degrees) {
-    const d = degreeStats?.[deg];
+  for (const item of items) {
+    const d = degreeStats?.[item];
     if (!d || d.recent.length < 3) {
-      // Unseen notes get a small nudge so new material surfaces early.
-      weights.set(deg, 1.4);
+      weights.set(item, 1.4);
       continue;
     }
     const missRate = d.recent.filter((r) => !r).length / d.recent.length;
-    weights.set(deg, Math.min(3.5, 1 + missRate * 3));
+    weights.set(item, Math.min(3.5, 1 + missRate * 3));
   }
   return weights;
 }
@@ -221,17 +282,14 @@ export type DegreeReport = {
   deg: Deg;
   accuracy: number;
   attempts: number;
-  /** Recent half compared with the earlier half of the stored window. */
   trend: 'improving' | 'slipping' | 'steady';
 };
 
-/** The note you're worst at across every round at a level. */
 export function weakestDegree(
   degreeStats: Record<number, DegreeStat> | undefined,
   minAttempts = 4,
 ): DegreeReport | null {
   if (!degreeStats) return null;
-
   let worst: DegreeReport | null = null;
   for (const [key, d] of Object.entries(degreeStats)) {
     const attempts = d.right + d.wrong;
@@ -258,10 +316,8 @@ export function degreeReport(
 function trendOf(d: DegreeStat): DegreeReport['trend'] {
   if (d.recent.length < 8) return 'steady';
   const mid = Math.floor(d.recent.length / 2);
-  const before = d.recent.slice(0, mid);
-  const after = d.recent.slice(mid);
   const rate = (xs: boolean[]) => xs.filter(Boolean).length / xs.length;
-  const delta = rate(after) - rate(before);
+  const delta = rate(d.recent.slice(mid)) - rate(d.recent.slice(0, mid));
   if (delta >= 0.2) return 'improving';
   if (delta <= -0.2) return 'slipping';
   return 'steady';
