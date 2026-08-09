@@ -25,7 +25,18 @@ export type LevelKind =
   /** Three notes play. Which one was home? */
   | 'which-is-home'
   /** Which note of the key was that? One or more, in order. */
-  | 'name-the-note';
+  | 'name-the-note'
+  /** Sing home back after hearing the key. */
+  | 'sing-home'
+  /** Sing back the note you just heard. */
+  | 'sing-back'
+  /** Sing a named note of the key, with nothing to copy. */
+  | 'sing-degree';
+
+/** Kinds that need the microphone. */
+export function isSingKind(kind: LevelKind): boolean {
+  return kind === 'sing-home' || kind === 'sing-back' || kind === 'sing-degree';
+}
 
 export const INTRO_LABEL: Record<IntroMode, string> = {
   full: 'Full intro',
@@ -41,20 +52,22 @@ export const INTRO_HELP: Record<IntroMode, string> = {
   none: 'Nothing but the note. You hold the key in your head.',
 };
 
-export type Stage = 'finding' | 'naming' | 'deeper';
+export type Stage = 'finding' | 'naming' | 'deeper' | 'voice';
 
-export const STAGES: Stage[] = ['finding', 'naming', 'deeper'];
+export const STAGES: Stage[] = ['finding', 'naming', 'deeper', 'voice'];
 
 export const STAGE_LABEL: Record<Stage, string> = {
   finding: 'Finding home',
   naming: 'Naming the notes',
   deeper: 'Going deeper',
+  voice: 'Your voice',
 };
 
 export const STAGE_BLURB: Record<Stage, string> = {
   finding: 'Learn what home sounds like, with a drone holding it under everything.',
   naming: 'The drone comes off. Now name what you hear.',
   deeper: 'Longer phrases, minor keys, notes from outside the key, and less and less to hold onto.',
+  voice: 'Stop picking answers and produce them. Needs a microphone; everything else works without one.',
 };
 
 export type Level = {
@@ -75,6 +88,8 @@ export type Level = {
   sequenceLength: number;
   /** Re-roll the key on every question rather than once per round. */
   keyPerQuestion: boolean;
+  /** How far out of tune a sung note may be, in cents. */
+  singTolerance: number;
   roundLength: number;
 };
 
@@ -82,14 +97,20 @@ const MAJOR = DIATONIC.major;
 const MINOR = DIATONIC.minor;
 
 /** Defaults, so each level below only states what makes it different. */
-function level(partial: Omit<Level, 'mode' | 'drone' | 'twoOctaves' | 'sequenceLength' | 'keyPerQuestion'> &
-  Partial<Level>): Level {
+function level(
+  partial: Omit<
+    Level,
+    'mode' | 'drone' | 'twoOctaves' | 'sequenceLength' | 'keyPerQuestion' | 'singTolerance'
+  > &
+    Partial<Level>,
+): Level {
   return {
     mode: 'major',
     drone: false,
     twoOctaves: false,
     sequenceLength: 1,
     keyPerQuestion: false,
+    singTolerance: 45,
     ...partial,
   };
 }
@@ -248,6 +269,41 @@ export const LEVELS: Level[] = [
     twoOctaves: true,
     keyPerQuestion: true,
     roundLength: 6,
+  }),
+
+  // ------------------------------------------------------------ your voice
+  level({
+    id: 15,
+    stage: 'voice',
+    kind: 'sing-home',
+    name: 'Sing home',
+    blurb: 'Hear the key, then sing home yourself. No buttons to guess with.',
+    degrees: [0],
+    intro: 'full',
+    roundLength: 5,
+    singTolerance: 50,
+  }),
+  level({
+    id: 16,
+    stage: 'voice',
+    kind: 'sing-back',
+    name: 'Sing it back',
+    blurb: 'A note plays. Sing that note back once it has stopped.',
+    degrees: MAJOR,
+    intro: 'short',
+    roundLength: 5,
+    singTolerance: 45,
+  }),
+  level({
+    id: 17,
+    stage: 'voice',
+    kind: 'sing-degree',
+    name: 'Sing the note',
+    blurb: "You're told which note of the key to sing. Nothing plays it for you.",
+    degrees: MAJOR,
+    intro: 'full',
+    roundLength: 5,
+    singTolerance: 40,
   }),
 ];
 

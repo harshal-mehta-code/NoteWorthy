@@ -157,6 +157,14 @@ export function midiToHz(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
+const NOTE_NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+
+/** Concert-pitch name, for showing a singer which note they actually hit. */
+export function midiToName(midi: number): string {
+  const rounded = Math.round(midi);
+  return `${NOTE_NAMES[((rounded % 12) + 12) % 12]}${Math.floor(rounded / 12) - 1}`;
+}
+
 /** The home chord, voiced so it sits under the melody rather than over it. */
 export function tonicTriad(tonic: number, mode: Mode = 'major'): number[] {
   const third = mode === 'minor' ? 3 : 4;

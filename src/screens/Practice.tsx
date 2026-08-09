@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Dots, IconButton, Screen, Sheet } from '@/components/ui';
-import { INTRO_HELP, INTRO_LABEL, getLevel } from '@/core/levels';
+import { INTRO_HELP, INTRO_LABEL, getLevel, isSingKind } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { KEYS, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
 import {
@@ -13,6 +13,7 @@ import {
   type Question,
 } from '@/core/question';
 import { degreeWeights, useStore } from '@/store/useStore';
+import { SingPanel, type SingOutcome } from '@/components/SingPanel';
 import {
   now,
   playAgainstHome,
@@ -121,6 +122,13 @@ export default function Practice() {
       const midis = midisFor(q, tonic);
       setPlayingIndex(0);
 
+      if (midis.length === 0) {
+        // sing-degree: you're told the note, nothing plays it for you.
+        setPlayingIndex(-1);
+        later(onDone, 120);
+        return;
+      }
+
       if (midis.length === 1) {
         playSequence(midis, SEQUENCE_GAP, 1.15, 0.26);
         later(() => {
@@ -156,7 +164,7 @@ export default function Practice() {
       }
 
       const q = generate(config, prevDegree.current, weights);
-      prevDegree.current = q.sequence[q.sequence.length - 1];
+      prevDegree.current = q.target ?? q.sequence[q.sequence.length - 1] ?? null;
       setQuestion(q);
 
       const startPlaying = () => {
@@ -258,6 +266,57 @@ export default function Practice() {
     later(advance, holdMs);
   }
 
+  /**
+   * Sing levels are graded by the microphone, not by a button, so they get
+   * their own path. A skip is not a wrong answer — it advances without
+   * recording anything, so a missing microphone never poisons your stats.
+   */
+  function handleSing(outcome: SingOutcome) {
+    if (!question || answered.current) return;
+    answered.current = true;
+    const tonic = keyRef.current.tonic;
+    const targetMidi = degreeToMidi(tonic, question.target ?? 0);
+
+    if (outcome === 'skipped') {
+      setPhase('wrong');
+      later(advance, 900);
+      return;
+    }
+
+    const hit = outcome === 'hit';
+    recordAnswer(level, hit, blamedDegrees(question, []));
+
+    if (hit) {
+      const nextStreak = streak + 1;
+      setStreak(nextStreak);
+      score.current.correct += 1;
+      score.current.bestStreak = Math.max(score.current.bestStreak, nextStreak);
+      setPhase('correct');
+      playCorrect(tonic, targetMidi, nextStreak, config.mode);
+      later(advance, HOLD_CORRECT_MS);
+      return;
+    }
+
+    setStreak(0);
+    setPhase('wrong');
+    for (const deg of blamedDegrees(question, [])) {
+      score.current.misses.set(deg, (score.current.misses.get(deg) ?? 0) + 1);
+    }
+    // Nothing to compare against, so just play the note they were reaching for.
+    playSequence([targetMidi], SEQUENCE_GAP, 1.1, 0.26);
+    later(advance, 2200);
+  }
+
+  function replayReference() {
+    if (!question) return;
+    const tonic = keyRef.current.tonic;
+    if (question.sequence.length) {
+      playSequence(midisFor(question, tonic), SEQUENCE_GAP, 1.0, 0.26);
+    } else {
+      playKeyIntro(tonic, 'home', config.mode);
+    }
+  }
+
   function pick(optionId: string) {
     if (phase !== 'question' || answered.current || !question) return;
     const next = [...slots, optionId];
@@ -300,7 +359,7 @@ export default function Practice() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!question) return;
+      if (!question || isSingKind(question.kind)) return;
       if (e.key === ' ') {
         e.preventDefault();
         replay();
@@ -321,6 +380,7 @@ export default function Practice() {
   });
 
   const revealed = phase === 'correct' || phase === 'wrong';
+  const singing = isSingKind(config.kind);
   const cols = question ? columnsFor(question) : 3;
   const totalSlots = question ? slotCount(question) : 1;
   const multiNote = (question?.sequence.length ?? 1) > 1;
@@ -351,7 +411,7 @@ export default function Practice() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 py-4 text-center">
-        {multiNote ? (
+        {singing && phase === 'question' ? null : multiNote ? (
           <SequenceOrbs
             count={question?.sequence.length ?? 3}
             playing={playingIndex}
@@ -389,15 +449,30 @@ export default function Practice() {
           </button>
         )}
 
-        <p className="max-w-[30ch] text-[15px] text-muted">
-          {phase === 'intro'
-            ? 'Settling into the key…'
-            : phase === 'playing'
-              ? 'Listen…'
-              : phase === 'question'
-                ? promptFor(question, slots.length, totalSlots)
-                : ''}
-        </p>
+        {singing && question && phase === 'question' && (
+          <div className="w-full">
+            <SingPanel
+              key={`${index}-${question.target}`}
+              targetMidi={degreeToMidi(keyRef.current.tonic, question.target ?? 0)}
+              targetLabel={question.answerLabel}
+              tolerance={config.singTolerance}
+              onOutcome={handleSing}
+              onReplayReference={replayReference}
+            />
+          </div>
+        )}
+
+        {!(singing && phase === 'question') && (
+          <p className="max-w-[30ch] text-[15px] text-muted">
+            {phase === 'intro'
+              ? 'Settling into the key…'
+              : phase === 'playing'
+                ? 'Listen…'
+                : phase === 'question'
+                  ? promptFor(question, slots.length, totalSlots)
+                  : ''}
+          </p>
+        )}
 
         <div className="flex min-h-[66px] max-w-[32ch] flex-col items-center justify-center gap-1.5">
           {revealed && question && (
@@ -426,7 +501,10 @@ export default function Practice() {
         />
       )}
 
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      >
         {question?.options.map((option) => {
           // With several slots a single button can be right in one and wrong
           // in another, so the per-slot row carries the verdict instead.
@@ -476,8 +554,10 @@ export default function Practice() {
       <div className="flex items-center justify-between gap-2 pt-3 pb-1 text-[13px]">
         <button
           onClick={replay}
-          disabled={phase !== 'question'}
-          className="py-2 text-subtle transition hover:text-ink disabled:opacity-40"
+          disabled={phase !== 'question' || singing}
+          className={`py-2 text-subtle transition hover:text-ink disabled:opacity-40 ${
+            singing ? 'invisible' : ''
+          }`}
         >
           Play again
         </button>
@@ -513,6 +593,21 @@ export default function Practice() {
             </p>
           </>
         )}
+        {singing && (
+          <>
+            <p>
+              Nothing plays while you sing — the reference stops first, so you're producing the
+              note from memory rather than matching one that's still ringing.
+            </p>
+            <p>
+              <strong className="text-ink">Any octave counts.</strong> Sing it wherever it sits
+              comfortably in your voice; the app only cares that it's the right note.
+            </p>
+            <p className="text-subtle">
+              Headphones help. Hold the note steady for about a second to pass.
+            </p>
+          </>
+        )}
         {config.mode === 'minor' && (
           <p>
             This key is <strong className="text-ink">minor</strong>. Home works the same way, but
@@ -536,6 +631,12 @@ export default function Practice() {
 
 function promptFor(q: Question | null, filled: number, total: number): string {
   switch (q?.kind) {
+    case 'sing-home':
+      return 'Now sing home.';
+    case 'sing-back':
+      return 'Sing that note back.';
+    case 'sing-degree':
+      return 'Find it and sing it.';
     case 'home-or-not':
       return 'Was that home?';
     case 'rest-or-move':

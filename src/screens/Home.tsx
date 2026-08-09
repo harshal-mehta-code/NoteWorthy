@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Card, Label, Screen, Sheet } from '@/components/ui';
-import { LEVELS, STAGE_BLURB, STAGE_LABEL, STAGES, getLevel } from '@/core/levels';
+import { LEVELS, STAGE_BLURB, STAGE_LABEL, STAGES, getLevel, isSingKind } from '@/core/levels';
 import { degreeLabel, type Deg, type Mode } from '@/core/music';
 import { recentAccuracy, useStore } from '@/store/useStore';
 import { unlockAudio } from '@/audio/engine';
@@ -50,7 +50,11 @@ export default function Home() {
         <p className="mt-4 text-[16px] leading-relaxed text-muted">{current.blurb}</p>
 
         <div className="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2">
-          {current.drone ? (
+          {isSingKind(current.kind) ? (
+            <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
+              Needs a microphone
+            </span>
+          ) : current.drone ? (
             <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
               Drone holds home
             </span>
@@ -132,6 +136,9 @@ export default function Home() {
                       <span className="mt-1 block text-[13px] leading-snug text-muted">
                         {l.blurb}
                       </span>
+                      {isSingKind(l.kind) && (
+                        <span className="label mt-1.5 block text-cool">Microphone</span>
+                      )}
                     </button>
                   );
                 })}

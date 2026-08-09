@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LEVELS, getLevel } from './levels';
-import { blamedDegrees, generate, slotCount } from './question';
+import { LEVELS, getLevel, isSingKind } from './levels';
+import { blamedDegrees, generate, singDegrees, slotCount } from './question';
 import { DIATONIC } from './music';
 
 const times = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -12,10 +12,8 @@ describe('every level generates valid questions', () => {
         void _;
         const q = generate(level, null);
 
-        expect(q.sequence.length).toBeGreaterThan(0);
         expect(q.octaveUp.length).toBe(q.sequence.length);
-        expect(q.options.length).toBeGreaterThan(1);
-        expect(q.correctIds.length).toBeGreaterThan(0);
+        expect(q.answerLabel.length).toBeGreaterThan(0);
 
         // Everything played has to be a degree the level actually declares,
         // or the answer buttons cannot contain the right answer.
@@ -23,13 +21,25 @@ describe('every level generates valid questions', () => {
           expect(level.degrees).toContain(deg);
         }
 
+        if (isSingKind(level.kind)) {
+          // Graded by the microphone, so there are no options at all — but
+          // there must be a target, and it must be in the level's pool.
+          expect(q.options).toHaveLength(0);
+          expect(q.correctIds).toHaveLength(0);
+          expect(q.target).toBeDefined();
+          expect(level.degrees).toContain(q.target!);
+          continue;
+        }
+
+        expect(q.sequence.length).toBeGreaterThan(0);
+        expect(q.options.length).toBeGreaterThan(1);
+        expect(q.correctIds.length).toBeGreaterThan(0);
+
         // Every correct answer must be selectable.
         const ids = new Set(q.options.map((o) => o.id));
         for (const id of q.correctIds) {
           expect(ids.has(id)).toBe(true);
         }
-
-        expect(q.answerLabel.length).toBeGreaterThan(0);
       }
     });
   }
@@ -44,8 +54,55 @@ describe('answer slots match the question', () => {
   });
 
   it('asks for a single answer on the yes/no and find-home levels', () => {
-    for (const level of LEVELS.filter((l) => l.kind !== 'name-the-note')) {
+    for (const level of LEVELS.filter(
+      (l) => l.kind !== 'name-the-note' && !isSingKind(l.kind),
+    )) {
       expect(slotCount(generate(level, null))).toBe(1);
+    }
+  });
+});
+
+describe('sing levels', () => {
+  it('always asks for home on sing-home', () => {
+    const level = getLevel(15);
+    for (const _ of times(50)) {
+      void _;
+      expect(generate(level, null).target).toBe(0);
+    }
+  });
+
+  it('plays the note on sing-back, so you have something to copy', () => {
+    const level = getLevel(16);
+    for (const _ of times(100)) {
+      void _;
+      const q = generate(level, null);
+      expect(q.sequence).toEqual([q.target]);
+    }
+  });
+
+  it('plays nothing on sing-degree — that is the whole point', () => {
+    const level = getLevel(17);
+    for (const _ of times(100)) {
+      void _;
+      const q = generate(level, null);
+      expect(q.sequence).toHaveLength(0);
+      expect(level.degrees).toContain(q.target!);
+    }
+  });
+
+  it('credits and blames the target degree', () => {
+    for (const id of [15, 16, 17]) {
+      const q = generate(getLevel(id), null);
+      expect(singDegrees(q)).toEqual([q.target]);
+      expect(blamedDegrees(q, [])).toEqual([q.target]);
+    }
+  });
+
+  it('never repeats the previous note back to back', () => {
+    const level = getLevel(16);
+    for (const _ of times(200)) {
+      void _;
+      expect(generate(level, 7).target).not.toBe(7);
     }
   });
 });

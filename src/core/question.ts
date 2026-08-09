@@ -6,7 +6,7 @@
  * Question and reports an answer, and knows nothing about how either is made.
  */
 
-import type { Level, LevelKind } from './levels';
+import { isSingKind, type Level, type LevelKind } from './levels';
 import {
   RESTFUL,
   degreeLabel,
@@ -21,13 +21,15 @@ export type Option = { id: string; primary: string; secondary?: string };
 
 export type Question = {
   kind: LevelKind;
-  /** Degrees to play, in order. */
+  /** Degrees to play, in order. Empty when nothing is played for you. */
   sequence: Deg[];
   /** Per-note octave displacement, parallel to `sequence`. */
   octaveUp: boolean[];
   options: Option[];
   /** For multi-note questions this is the answer for each slot, in order. */
   correctIds: string[];
+  /** For sing levels: the degree you have to produce. */
+  target?: Deg;
   /** Shown as the headline in feedback. */
   answerLabel: string;
   /** One line under it, explaining *why*. */
@@ -50,6 +52,8 @@ export function generate(
   previous: Deg | null,
   weights?: Map<Deg, number>,
 ): Question {
+  if (isSingKind(level.kind)) return sing(level, previous, weights);
+
   switch (level.kind) {
     case 'home-or-not':
       return homeOrNot(level, previous, weights);
@@ -59,7 +63,39 @@ export function generate(
       return whichIsHome(level);
     case 'name-the-note':
       return nameTheNote(level, previous, weights);
+    default:
+      return nameTheNote(level, previous, weights);
   }
+}
+
+/**
+ * Sing levels have no options — the microphone decides. What differs between
+ * them is only how much help you get: `sing-home` always asks for the same
+ * note, `sing-back` plays the note first, and `sing-degree` names it and
+ * plays nothing, which is the only one that is genuinely production rather
+ * than imitation.
+ */
+function sing(level: Level, previous: Deg | null, weights?: Map<Deg, number>): Question {
+  const target = level.kind === 'sing-home' ? 0 : pickDegree(level.degrees, previous, weights);
+  const name = `${degreeLabel(target, level.mode)} · ${degreeSolfege(target)}`;
+
+  // sing-degree deliberately plays nothing: you are told the note and have to
+  // find it yourself, with only the key intro to go on.
+  const sequence = level.kind === 'sing-degree' ? [] : [target];
+
+  return {
+    kind: level.kind,
+    sequence,
+    octaveUp: sequence.map(() => false),
+    options: [],
+    correctIds: [],
+    target,
+    answerLabel: level.kind === 'sing-home' ? 'Home' : name,
+    explain:
+      level.kind === 'sing-home'
+        ? 'Any octave counts — sing it where it sits comfortably.'
+        : `${degreeNickname(target, level.mode)}. Any octave counts.`,
+  };
 }
 
 /**
@@ -180,12 +216,18 @@ export function degreeForOption(q: Question, optionId: string): Deg | null {
   }
 }
 
+/** Degrees to credit or blame, for sing levels. */
+export function singDegrees(q: Question): Deg[] {
+  return q.target === undefined ? [] : [q.target];
+}
+
 /**
  * Which degrees an error should be blamed on, so stats and the summary can
  * be specific. For 'which-is-home' that's the note you mistook for home;
  * everywhere else it's the note (or notes) you failed to place.
  */
 export function blamedDegrees(q: Question, answer: string[]): Deg[] {
+  if (isSingKind(q.kind)) return singDegrees(q);
   if (q.kind === 'which-is-home') {
     const picked = degreeForOption(q, answer[0] ?? '0');
     return picked === null ? [q.sequence[0]] : [picked];

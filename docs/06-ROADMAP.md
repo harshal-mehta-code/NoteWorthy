@@ -297,15 +297,16 @@ Full keyboard operation for every drill, screen-reader announcements, color-blin
 
 **Superseded the parallel-first plan after prototype feedback.** The wide fan-out below is still the right shape for later, but the first milestone is deliberately narrow and sequential: build one drill end to end, get it in front of real use, then widen. Phase 2's four-way split only pays off once the shell, the drill contract and the feedback loop have survived contact with an actual user.
 
-**Shipped** — Vite/React/TS shell, design tokens, Web Audio engine with sampled piano and the musical feedback layer, the Find the Note drill across fourteen levels and three stages (including two- and three-note phrases, minor keys and chromatics), adaptive item selection, per-note stats across rounds, Welcome/Home/Summary/Settings, local persistence, PWA, unit tests on the core. Deployed.
+**Shipped** — Vite/React/TS shell, design tokens, Web Audio engine with sampled piano and the musical feedback layer, the Find the Note drill across seventeen levels and four stages (two- and three-note phrases, minor keys, chromatics, and three sung levels), our own MPM pitch detector, adaptive item selection, per-note stats across rounds, Welcome/Home/Summary/Settings, local persistence, PWA, unit tests on the core. Deployed.
 
 **Next, in order** — each is a self-contained increment small enough to review in one sitting:
 
-1. **Sing-back with the mic** on the finding-home levels: "is that home?" becomes "find home with your voice", which can't be guessed and is the first step toward the vocal pillar.
-2. Response time as a second signal — accuracy alone hides the difference between knowing and working it out.
-3. FSRS scheduling across levels, so old material comes back instead of only the current level being practised.
-4. Chord quality (major vs minor), reusing the same question shell.
-5. Only then: a second pillar, and with it the tab bar.
+1. **Vocal range mapping.** A guided glissando at first run stores your comfortable range, which lets sung levels target an octave you can actually reach and lets grading tighten from pitch class to absolute pitch.
+2. **Response time as a second signal** — accuracy alone hides the difference between knowing a note and working it out.
+3. **FSRS scheduling across levels**, so old material comes back instead of only the current level being practised.
+4. **Sing a phrase back** — two notes, then three. The same machinery as level 16, and the first thing that is genuinely melodic dictation by voice.
+5. Chord quality (major vs minor), reusing the same question shell.
+6. Only then: a second pillar, and with it the tab bar.
 
 ## Original build order for the first milestone
 

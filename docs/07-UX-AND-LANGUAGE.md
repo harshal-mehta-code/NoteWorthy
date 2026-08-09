@@ -106,8 +106,25 @@ Where it stops being gentle. Each level moves a *different* axis, so none of the
 
 **One axis moves at a time.** Notes are added, or help is withdrawn, or the phrase gets longer — never two at once, and help only starts being withdrawn once all seven notes are in play.
 
+### Stage 4 — Your voice
+The first three stages are recognition: you pick from what's offered. This stage is **production** — you make the note yourself, which cannot be guessed and is a far stronger test of whether you actually have the pitch.
+
+| Level | What you do | Help |
+|---|---|---|
+| 15 — Sing home | Hear the key, then sing home | always the same note |
+| 16 — Sing it back | A note plays; sing it back once it stops | you heard it |
+| 17 — Sing the note | You're *told* which note; nothing plays it | none |
+
+Three rules make this work:
+
+- **Any octave counts.** A bass and a soprano asked for the same note will correctly sing an octave or two apart. Grading is on pitch class, so both are right. Absolute-pitch grading would need range mapping first, which we don't have.
+- **Nothing sounds while you sing.** The reference plays and then *stops*. That makes it production from memory rather than imitation — and it stops the app hearing its own playback through the speakers and scoring it as your voice.
+- **Declining is never a dead end.** The microphone is requested at the drill, not on load, with a plain explanation. Refusing it leaves every other level working, and a skip advances without recording anything, so a missing microphone never poisons your statistics.
+
+Tolerance starts at ±50 cents and tightens to ±40 by level 17. You have to hold the note for about a second, with a short grace period so a breath doesn't reset you.
+
 ### Round length
-Six questions in the naming stage, eight in the yes/no stage where each question is quicker, five at level 11 where each one is three notes. Under a minute either way. Long rounds make the app feel like homework; a short round you'll happily repeat beats a long one you won't start.
+Six questions in the naming stage, eight in the yes/no stage where each question is quicker, five where each question is three notes or sung. Under a minute either way. Long rounds make the app feel like homework; a short round you'll happily repeat beats a long one you won't start.
 
 ---
 

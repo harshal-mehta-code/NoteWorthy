@@ -92,7 +92,9 @@ handle.getNoteAt(x, y)                // hit testing for staff input
 `Score` is **our** data model (see §4), not VexFlow's — so we can swap renderers, render to canvas for sharing, or run headless in tests.
 
 ### 3.3 Mic & pitch detection (`src/mic/`)
-- `getUserMedia` → `AudioWorkletNode` running pitchy (MPM). Worklet, not ScriptProcessor, and not on the main thread.
+- `getUserMedia` → `AudioWorkletNode` running MPM. Worklet, not ScriptProcessor, and not on the main thread.
+  - **Shipped state**: detection runs on the main thread from an `AnalyserNode` at rAF rate (`src/mic/pitch.ts`, `src/mic/useMic.ts`). Cost is kept low by decimating 2:1 before the search — the voice sits well below 11 kHz, so nothing useful is lost. The detector is a pure function and moves into a worklet unchanged when that becomes worth doing.
+  - We wrote MPM rather than pulling in `pitchy`: it is ~120 lines, removes a dependency, and being ours it is directly unit-testable against synthesized tones.
 - Pipeline: high-pass filter (rumble) → noise gate (clarity/RMS threshold) → MPM → median smoothing over 3 frames → hysteresis on note transitions.
 - Emits `{ hz, cents, midiFloat, clarity, t }` at ~60Hz.
 - Handles the hard cases explicitly: octave errors (MPM's known failure mode — reject jumps >7 semitones between adjacent frames unless sustained), silence, and background noise.
