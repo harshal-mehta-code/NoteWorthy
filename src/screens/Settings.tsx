@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router';
 import { Button, IconButton, Label, Screen, Segmented } from '@/components/ui';
 import { INTRO_HELP } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
-import { KEYS } from '@/core/music';
+import { KEYS, midiToName } from '@/core/music';
+import { isUsable } from '@/core/range';
 import { useStore } from '@/store/useStore';
 
 export default function Settings() {
@@ -93,6 +94,25 @@ export default function Settings() {
               ))}
             </div>
           )}
+        </Field>
+
+        <Field
+          label="Your voice"
+          help="Sung answers are graded on the note, never the octave — this only changes which octave the app plays its prompts in."
+        >
+          <button
+            onClick={() => navigate('/voice/range')}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3.5 text-left transition hover:border-line-strong hover:bg-surface-2"
+          >
+            <span className="text-[15px] font-semibold">
+              {isUsable(s.vocalRange) ? 'Your range' : 'Find your range'}
+            </span>
+            <span className="tnum text-[14px] text-subtle">
+              {isUsable(s.vocalRange)
+                ? `${midiToName(s.vocalRange.low)} – ${midiToName(s.vocalRange.high)}`
+                : 'Not measured'}
+            </span>
+          </button>
         </Field>
 
         <Field label="Appearance">

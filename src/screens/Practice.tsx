@@ -7,6 +7,7 @@ import { INTRO_HELP, INTRO_LABEL, findLevel, isSingKind } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { getCourse, COURSES } from '@/core/courses';
 import { buildWarmup, planBreakdown, type PlanStep } from '@/core/warmup';
+import { isUsable, octaveShiftFor, shiftIntoRange } from '@/core/range';
 import { directionLabel } from '@/core/intervals';
 import { buildChord, type ChordQuality } from '@/core/chords';
 import { KEYS, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
@@ -54,6 +55,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const labelStyle = useStore((s) => s.labelStyle);
   const introOverride = useStore((s) => s.introOverride);
   const allDegreeStats = useStore((s) => s.degreeStats);
+  const vocalRange = useStore((s) => s.vocalRange);
   const recordAnswer = useStore((s) => s.recordAnswer);
   const finishSession = useStore((s) => s.finishSession);
 
@@ -155,11 +157,29 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     [],
   );
 
-  /** Absolute pitches for a question, whether it thinks in degrees or not. */
+  /**
+   * Absolute pitches for a question, whether it thinks in degrees or not.
+   *
+   * Sung questions get moved into the singer's octave. Grading was always
+   * octave-agnostic, so this changes nothing about what counts as right — it
+   * only stops a low voice having to transpose the prompt before answering
+   * it, which is an extra step and a harder one than the skill being trained.
+   */
   const midisFor = useCallback(
-    (q: Question, tonic: number) =>
-      q.midis ?? q.sequence.map((deg, i) => degreeToMidi(tonic, deg, q.octaveUp[i])),
-    [],
+    (q: Question, tonic: number) => {
+      const midis = q.midis ?? q.sequence.map((deg, i) => degreeToMidi(tonic, deg, q.octaveUp[i]));
+      return isSingKind(q.kind) ? shiftIntoRange(midis, vocalRange) : midis;
+    },
+    [vocalRange],
+  );
+
+  /** Where a sung target actually sounds, for the reference and the meter. */
+  const singTargetMidi = useCallback(
+    (q: Question, tonic: number) => {
+      const base = degreeToMidi(tonic, q.target ?? 0);
+      return base + octaveShiftFor(base, vocalRange);
+    },
+    [vocalRange],
   );
 
   const playQuestion = useCallback(
@@ -396,7 +416,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     if (!question || answered.current) return;
     answered.current = true;
     const tonic = keyRef.current.tonic;
-    const targetMidi = degreeToMidi(tonic, question.target ?? 0);
+    const targetMidi = singTargetMidi(question, tonic);
 
     // Skipping is what you do when there's no microphone, so it must not
     // score as a miss — it comes out of the denominator instead.
@@ -565,12 +585,25 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
           <div className="w-full">
             <SingPanel
               key={`${index}-${question.target}`}
-              targetMidi={degreeToMidi(keyRef.current.tonic, question.target ?? 0)}
+              targetMidi={singTargetMidi(question, keyRef.current.tonic)}
               targetLabel={question.answerLabel}
               tolerance={config.singTolerance}
               onOutcome={handleSing}
               onReplayReference={replayReference}
             />
+            {/* Only worth saying once, and only to someone it would help. */}
+            {!isUsable(vocalRange) && (
+              <p className="mt-3 text-center text-[13px] leading-snug text-subtle">
+                Prompts are playing around middle C.{' '}
+                <button
+                  onClick={() => navigate('/voice/range')}
+                  className="underline underline-offset-2 transition hover:text-ink"
+                >
+                  Find your range
+                </button>{' '}
+                and they'll fit your voice instead.
+              </p>
+            )}
           </div>
         ) : reading && question?.staff ? (
           <div className="w-full rounded-2xl border border-line bg-surface px-2 py-3">

@@ -10,6 +10,7 @@ import Lesson from '@/screens/Lesson';
 import Summary from '@/screens/Summary';
 import You from '@/screens/You';
 import Settings from '@/screens/Settings';
+import VocalRange from '@/screens/VocalRange';
 
 /** Applies the theme choice, and keeps the browser chrome colour in step. */
 function useTheme() {
@@ -82,6 +83,7 @@ export default function App() {
           <Route path="/learn/:lessonId" element={<Lesson />} />
           <Route path="/summary" element={<Summary />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/voice/range" element={<VocalRange />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
