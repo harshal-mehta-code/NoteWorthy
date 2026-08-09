@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.7 shipped.** Six courses across all four pillars, a Daily Warm-Up that mixes them, and vocal range mapping.
+**Status: v0.8 shipped.** Seven courses across all four pillars, a Daily Warm-Up that mixes them, vocal range mapping, and backup to a file.
 
 ```bash
 npm install
@@ -20,7 +20,7 @@ npm run dev
 | 🎧 **Ear training** | **Find the Note** (17 levels), **Chords** (7), **Progressions** (7) and **Intervals** (8). Still to come: melodic dictation. |
 | 👁 **Sight reading** *(started)* | Naming notes on the stave by landmark, both clefs and ledger lines. Still to come: rhythm, and scrolling reads that never stop. |
 | 🧠 **Music theory** *(started)* | Nine interactive lessons with a playable keyboard and a circle of fifths you can hear. More of the curriculum to follow. |
-| 🎤 **Vocal training** *(started)* | Live pitch feedback, sung answers, and range mapping that fits every prompt to your voice. Still to come: interval leaps, agility runs, and sight-singing with your pitch traced over the staff. |
+| 🎤 **Vocal training** *(started)* | **Sing a Phrase** (8 levels) plus sung answers inside Find the Note, live pitch feedback, and range mapping that fits every prompt to your voice. Still to come: sight-singing with your pitch traced over the staff. |
 
 ## What makes it different
 
@@ -63,6 +63,11 @@ Name notes on the stave, built on **landmarks** rather than "Every Good Boy Dese
 ### 🧠 Foundations — nine lessons
 Short interactive lessons with a keyboard you can play: how the keyboard is laid out, half and whole steps, what makes a scale major, why one note feels like home, what an interval actually is, how triads are built, why chords get numbers instead of names, what changes in a minor key, and the circle of fifths — as a ring you tap to hear rather than a diagram to memorise. Every lesson ends by pointing at the drill where the same idea turns up; that linkage is what stops theory becoming trivia.
 
+### 🎤 Sing a Phrase — eight levels
+Sing back two notes, then three, then four- and five-note scale runs, then runs that turn around at the top, then the same in minor. Two axes move, one at a time: how many notes, and how fast they arrive — the later levels are the agility work, where speed is the difficulty.
+
+The hard part is **segmentation**: deciding where one note ends and the next begins in a continuous pitch stream. People sing legato, so silence can't be the only boundary — and a fixed tolerance band can't do it either, because it has to be wide enough for vibrato, and vibrato is wider than the semitone step it would then swallow. Sustained deviation separates them: vibrato swings past the threshold and comes straight back, a real step goes and stays. Slots fill with what you actually sang, right or wrong, so you're never stuck part way through a phrase.
+
 ### 🎤 Your range
 Sing your lowest comfortable note and your highest, once. After that every sung prompt plays in your octave instead of around middle C, so a low voice never has to transpose the question before answering it. Grading was always on the note rather than the octave, so nothing about what counts as right changes. Reported as a span in plain words — never a voice type, which two measured notes cannot support anyway.
 
@@ -79,7 +84,7 @@ Ten questions assembled fresh from every course you've started, weighted toward 
 - Rounds are five to eight questions — under a minute
 - Unit-tested core: every level's question generation is checked against its own rules, and the pitch detector against known tones
 - Midnight and Paper themes, keyboard input, works at 320px
-- Local-first: no account, nothing leaves the browser
+- Local-first: no account, nothing leaves the browser — and **backup to a file**, because the flip side of that promise is that clearing site data would otherwise take months of practice with it. Restore validates the file field by field, so picking the wrong one in a file dialog says what was wrong instead of corrupting your progress.
 - Installable PWA, works offline
 
 Deliberately **not** built yet: skill map, XP, achievements, spaced repetition scheduling. Four more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.

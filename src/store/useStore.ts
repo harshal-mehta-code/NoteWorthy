@@ -4,6 +4,7 @@ import { PROMOTE_ACCURACY, PROMOTE_MIN_ITEMS, type IntroMode } from '@/core/leve
 import { getCourse, statKey } from '@/core/courses';
 import type { Deg } from '@/core/music';
 import type { VocalRange } from '@/core/range';
+import type { BackupPayload } from '@/core/backup';
 
 export type LabelStyle = 'numbers' | 'solfege';
 export type ThemeChoice = 'system' | 'dark' | 'light';
@@ -70,6 +71,7 @@ type State = {
   setLabelStyle: (s: LabelStyle) => void;
   setTheme: (t: ThemeChoice) => void;
   setVocalRange: (r: VocalRange | null) => void;
+  restore: (payload: BackupPayload) => void;
   resetProgress: () => void;
 };
 
@@ -189,6 +191,22 @@ export const useStore = create<State>()(
       setLabelStyle: (labelStyle) => set({ labelStyle }),
       setTheme: (theme) => set({ theme }),
       setVocalRange: (vocalRange) => set({ vocalRange }),
+
+      /**
+       * Replace everything with a validated backup. A restore is a *replace*,
+       * not a merge: merging two histories of the same drill would produce
+       * accuracy figures that describe neither of them.
+       */
+      restore: (payload) =>
+        set({
+          ...payload,
+          labelStyle: payload.labelStyle as LabelStyle,
+          keyMode: payload.keyMode as KeyMode,
+          introOverride: payload.introOverride as IntroMode | 'auto',
+          theme: payload.theme as ThemeChoice,
+          hasOnboarded: true,
+        }),
+
       // The measured range survives a progress reset on purpose: it describes
       // the singer, not their progress, and re-measuring is a chore.
       resetProgress: () => set({ ...INITIAL, hasOnboarded: true, vocalRange: get().vocalRange }),

@@ -299,13 +299,17 @@ Full keyboard operation for every drill, screen-reader announcements, color-blin
 
 **Shipped** — six courses across all four pillars (Find the Note, Chords, Progressions, Intervals, Read the Note, Foundations), a Practice library listing built and planned courses alike, tab navigation, a You screen, Vite/React/TS shell, design tokens, Web Audio engine with sampled piano and the musical feedback layer, the Find the Note drill across seventeen levels and four stages (two- and three-note phrases, minor keys, chromatics, and three sung levels), our own MPM pitch detector, adaptive item selection, per-note stats across rounds, Welcome/Home/Summary/Settings, local persistence, PWA, unit tests on the core. Deployed.
 
+**Also shipped since** — the Daily Warm-Up (a mixed, interleaved session drawn from every started course, with a share of it reaching back below the current level); vocal range mapping and auto-transposition of every sung prompt; five more theory lessons including a playable circle of fifths; the Sing a Phrase course (eight levels of phrases and agility runs, graded per note); and backup/restore to a JSON file.
+
 **Next, in order** — each is a self-contained increment small enough to review in one sitting:
 
-1. **Vocal range mapping.** A guided glissando at first run stores your comfortable range, which lets sung levels target an octave you can actually reach and lets grading tighten from pitch class to absolute pitch.
-2. **Response time as a second signal** — accuracy alone hides the difference between knowing a note and working it out.
-3. **FSRS scheduling across levels**, so old material comes back instead of only the current level being practised.
-4. **Sing a phrase back** — two notes, then three. The same machinery as level 16, and the first thing that is genuinely melodic dictation by voice.
+1. **Response time as a second signal** — accuracy alone hides the difference between knowing a note and working it out. Cheap to capture, and it feeds everything below.
+2. **FSRS scheduling across levels.** The warm-up already reaches back into old material, but it does so by weight rather than by when a thing is actually due. This replaces that heuristic with a real schedule.
+3. **The Musicianship Map** — the skill constellation across all four pillars, dimming as retention decays. Needs 2 first: without a real decay model there is nothing honest to dim.
+4. **Melodic dictation** — hear a phrase, write it down. The listening counterpart to Sing a Phrase, which already generates and grades phrases.
 5. Rhythm reading, once latency calibration exists.
+
+**Deliberately not next:** XP and achievements. The gamification that pays here is musical (feedback that resolves to the tonic, streaks that climb the scale) and it is already in. A points layer on top would be the generic version of something the app does better.
 
 ## Original build order for the first milestone
 

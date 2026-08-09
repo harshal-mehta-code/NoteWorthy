@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, IconButton, Label, Screen, Segmented } from '@/components/ui';
+import { Button, Card, IconButton, Label, Screen, Segmented } from '@/components/ui';
+import { backupFilename, buildBackup, parseBackup, type RestoreResult } from '@/core/backup';
 import { INTRO_HELP } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { KEYS, midiToName } from '@/core/music';
@@ -135,6 +136,9 @@ export default function Settings() {
             {s.totalAnswers === 1 ? 'question' : 'questions'} answered. Everything is stored on this
             device only — no account, and nothing leaves your browser.
           </p>
+
+          <Backup />
+
           {confirmReset ? (
             <div className="mt-4 space-y-2">
               <p className="text-[15px] text-wrong">
@@ -167,6 +171,127 @@ export default function Settings() {
         </div>
       </div>
     </Screen>
+  );
+}
+
+/**
+ * Backup and restore.
+ *
+ * The flip side of "no account, nothing leaves your browser" is that clearing
+ * site data takes everything with it. A file the user keeps is the whole
+ * mitigation, so it sits directly under the sentence that creates the risk.
+ */
+function Backup() {
+  const store = useStore();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<RestoreResult | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  function save() {
+    const file = buildBackup({
+      progress: store.progress,
+      lastCourse: store.lastCourse,
+      lessonsDone: store.lessonsDone,
+      labelStyle: store.labelStyle,
+      keyMode: store.keyMode,
+      keyName: store.keyName,
+      introOverride: store.introOverride,
+      theme: store.theme,
+      vocalRange: store.vocalRange,
+      stats: store.stats,
+      degreeStats: store.degreeStats,
+      streakDays: store.streakDays,
+      lastPracticeDay: store.lastPracticeDay,
+      totalSessions: store.totalSessions,
+      totalAnswers: store.totalAnswers,
+      lastSession: null,
+    });
+
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = backupFilename();
+    a.click();
+    URL.revokeObjectURL(url);
+    setNote('Saved. Keep it somewhere you back up.');
+  }
+
+  async function chose(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input, or picking the same file twice in a row does nothing.
+    e.target.value = '';
+    if (!file) return;
+    setNote(null);
+    setPending(parseBackup(await file.text()));
+  }
+
+  return (
+    <div className="mt-5">
+      <div className="flex gap-2">
+        <button
+          onClick={save}
+          className="flex-1 rounded-xl border border-line bg-surface px-3 py-3 text-[14px] font-semibold transition hover:border-line-strong hover:bg-surface-2"
+        >
+          Save a backup
+        </button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="flex-1 rounded-xl border border-line bg-surface px-3 py-3 text-[14px] font-semibold transition hover:border-line-strong hover:bg-surface-2"
+        >
+          Restore
+        </button>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json,.json"
+        onChange={chose}
+        className="hidden"
+        aria-label="Choose a backup file"
+      />
+
+      {note && <p className="mt-3 text-[13.5px] text-subtle">{note}</p>}
+
+      {pending && !pending.ok && (
+        <Card className="mt-3">
+          <p className="text-[14.5px] leading-relaxed text-wrong">{pending.error}</p>
+          <button
+            onClick={() => setPending(null)}
+            className="mt-3 text-sm text-subtle transition hover:text-ink"
+          >
+            Close
+          </button>
+        </Card>
+      )}
+
+      {pending?.ok && (
+        <Card tone="accent" className="mt-3">
+          <Label className="text-accent">Restore this backup?</Label>
+          <p className="mt-2.5 text-[14.5px] leading-relaxed">{pending.summary}</p>
+          <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
+            This replaces everything currently on this device. Restoring merges nothing — two
+            histories of the same drill would average into a figure describing neither.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                store.restore(pending.payload);
+                setPending(null);
+                setNote('Restored.');
+              }}
+            >
+              Restore it
+            </Button>
+            <Button variant="ghost" onClick={() => setPending(null)}>
+              Cancel
+            </Button>
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 
