@@ -3,7 +3,8 @@ import { Button, Card, Label, Screen } from '@/components/ui';
 import { COURSES, getCourse, statKey, PILLAR_LABEL, READY_COURSES } from '@/core/courses';
 import { findLevel } from '@/core/levels';
 import { LESSONS } from '@/content/lessons';
-import { levelFor, recentAccuracy, useStore } from '@/store/useStore';
+import { courseAnswers, levelFor, recentAccuracy, useStore } from '@/store/useStore';
+import { WARMUP_LENGTH, warmupCourses } from '@/core/warmup';
 import { unlockAudio } from '@/audio/engine';
 
 /**
@@ -38,6 +39,11 @@ export default function Home() {
     navigate(`/practice/${course.id}`);
   }
 
+  // The warm-up only means anything once there are at least two courses to
+  // mix. Before that it would be a normal round wearing a different hat.
+  const touched = warmupCourses().filter((c) => courseAnswers(stats, c.id) > 0);
+  const warmupReady = touched.length >= 2;
+
   const others = READY_COURSES.filter((c) => c.id !== course.id);
 
   return (
@@ -51,9 +57,29 @@ export default function Home() {
         )}
       </header>
 
+      {warmupReady && (
+        <button
+          onClick={async () => {
+            await unlockAudio();
+            navigate('/warmup');
+          }}
+          className="mt-3 w-full rounded-2xl border border-accent-dim bg-accent-wash p-4 text-left transition hover:border-accent"
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[17px] font-bold tracking-tight text-accent">Daily Warm-Up</span>
+            <span className="label shrink-0 text-accent">{WARMUP_LENGTH} questions</span>
+          </div>
+          <p className="mt-1.5 text-[13.5px] leading-snug text-muted">
+            A mix from every course you've started, including a few from levels you've already
+            passed. Different every day.
+          </p>
+        </button>
+      )}
+
       <div className="flex flex-1 flex-col justify-center py-6">
         <Label className="text-accent">
-          {totalSessions === 0 ? 'Start here' : 'Continue'} · {PILLAR_LABEL[course.pillar]}
+          {totalSessions === 0 ? 'Start here' : warmupReady ? 'Or continue' : 'Continue'} ·{' '}
+          {PILLAR_LABEL[course.pillar]}
         </Label>
         <h1 className="mt-3 text-[34px] leading-[1.05] font-bold tracking-[-0.04em] text-balance">
           {course.id === 'theory' ? (nextLesson?.title ?? 'Foundations') : config?.name}

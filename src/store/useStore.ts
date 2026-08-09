@@ -26,6 +26,8 @@ export type SessionResult = {
   bestStreak: number;
   /** Items involved in this round's mistakes, most-missed first. */
   weakDegrees: Deg[];
+  /** Which courses a mixed round drew on. Absent for single-course rounds. */
+  mix?: { courseId: string; count: number }[];
   promoted: boolean;
   finishedAt: number;
 };

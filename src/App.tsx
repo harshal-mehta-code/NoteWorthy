@@ -77,6 +77,7 @@ export default function App() {
             </RequireOnboarding>
           }
         >
+          <Route path="/warmup" element={<Practice warmup />} />
           <Route path="/practice/:courseId" element={<Practice />} />
           <Route path="/learn/:lessonId" element={<Lesson />} />
           <Route path="/summary" element={<Summary />} />

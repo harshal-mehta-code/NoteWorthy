@@ -6,6 +6,7 @@ import { Staff } from '@/components/Staff';
 import { INTRO_HELP, INTRO_LABEL, findLevel, isSingKind } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { getCourse, COURSES } from '@/core/courses';
+import { buildWarmup, planBreakdown, type PlanStep } from '@/core/warmup';
 import { directionLabel } from '@/core/intervals';
 import { buildChord, type ChordQuality } from '@/core/chords';
 import { KEYS, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
@@ -20,6 +21,7 @@ import {
 import { degreeWeights, levelFor, useStore } from '@/store/useStore';
 import { statKey } from '@/core/courses';
 import {
+  droneRunning,
   now,
   playAgainstHome,
   playComparison,
@@ -41,12 +43,12 @@ const HOLD_WRONG_MS = 3200;
 /** Gap between notes when a question plays more than one. */
 const SEQUENCE_GAP = 0.78;
 
-export default function Practice() {
+export default function Practice({ warmup = false }: { warmup?: boolean } = {}) {
   const navigate = useNavigate();
   const params = useParams<{ courseId?: string }>();
-  const course = getCourse(params.courseId ?? 'find-the-note') ?? COURSES[0];
 
   const progress = useStore((s) => s.progress);
+  const allStats = useStore((s) => s.stats);
   const keyMode = useStore((s) => s.keyMode);
   const keyName = useStore((s) => s.keyName);
   const labelStyle = useStore((s) => s.labelStyle);
@@ -55,7 +57,25 @@ export default function Practice() {
   const recordAnswer = useStore((s) => s.recordAnswer);
   const finishSession = useStore((s) => s.finishSession);
 
-  const level = levelFor(progress, course.id);
+  /**
+   * Both modes run the same loop over a **plan** — a list of
+   * {course, level} steps. A normal round is the same step repeated; a
+   * warm-up is a mix. Unifying them means the warm-up gets every drill type
+   * for free, and there is only one place where a question is asked.
+   */
+  const plan = useMemo<PlanStep[]>(() => {
+    if (warmup) return buildWarmup(progress, allStats);
+    const c = getCourse(params.courseId ?? 'find-the-note') ?? COURSES[0];
+    const levelId = levelFor(progress, c.id);
+    const rounds = findLevel(c.levels, levelId).roundLength;
+    return Array.from({ length: rounds }, () => ({ courseId: c.id, levelId }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [index, setIndex] = useState(0);
+  const step = plan[Math.min(index, plan.length - 1)];
+  const course = getCourse(step.courseId) ?? COURSES[0];
+  const level = step.levelId;
   const config = findLevel(course.levels, level);
 
   /** Interval and reading questions have no tonal centre to establish. */
@@ -88,7 +108,6 @@ export default function Practice() {
         ? config.intro
         : introOverride;
 
-  const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('intro');
   const [question, setQuestion] = useState<Question | null>(null);
   const [playingIndex, setPlayingIndex] = useState(-1);
@@ -96,20 +115,28 @@ export default function Practice() {
   const [streak, setStreak] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const score = useRef({ correct: 0, bestStreak: 0, misses: new Map<number, number>() });
+  const score = useRef({ correct: 0, skipped: 0, bestStreak: 0, misses: new Map<number, number>() });
   const timers = useRef<number[]>([]);
   const prevItem = useRef<number | null>(null);
   const answered = useRef(false);
 
   /**
-   * Weights are captured once per round. Recomputing mid-round would let the
-   * distribution chase a single bad answer, which reads as the app picking on
-   * you rather than adapting.
+   * Weights are captured once per round, per course+level. Recomputing
+   * mid-round would let the distribution chase a single bad answer, which
+   * reads as the app picking on you rather than adapting.
    */
-  const weights = useMemo(
-    () => degreeWeights(allDegreeStats[statKey(course.id, level)], config.degrees),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+  const weightCache = useRef(new Map<string, Map<number, number>>());
+  const weightsFor = useCallback(
+    (s: PlanStep) => {
+      const key = statKey(s.courseId, s.levelId);
+      const cached = weightCache.current.get(key);
+      if (cached) return cached;
+      const c = getCourse(s.courseId) ?? COURSES[0];
+      const built = degreeWeights(allDegreeStats[key], findLevel(c.levels, s.levelId).degrees);
+      weightCache.current.set(key, built);
+      return built;
+    },
+    [allDegreeStats],
   );
 
   const clearTimers = () => {
@@ -203,13 +230,27 @@ export default function Practice() {
       answered.current = false;
       setSlots([]);
 
-      const tonic = config.keyPerQuestion && questionIndex > 0 ? rollKey() : keyRef.current;
+      const thisStep = plan[Math.min(questionIndex, plan.length - 1)];
+      const thisCourse = getCourse(thisStep.courseId) ?? COURSES[0];
+      const cfg = findLevel(thisCourse.levels, thisStep.levelId);
+      const thisUsesKey =
+        cfg.kind !== 'interval-id' &&
+        cfg.kind !== 'read-note' &&
+        cfg.kind !== 'chord-quality' &&
+        cfg.kind !== 'chord-inversion';
+
+      // The drone belongs to a level, not a round — in a warm-up it has to
+      // appear and disappear between questions.
+      if (cfg.drone && !droneRunning()) startDrone(keyRef.current.tonic);
+      if (!cfg.drone && droneRunning()) stopDrone();
+
+      const tonic = cfg.keyPerQuestion && questionIndex > 0 ? rollKey() : keyRef.current;
       if (tonic !== keyRef.current) {
         keyRef.current = tonic;
         setKey(tonic);
       }
 
-      const q = generate(config, prevItem.current, weights, tonic.tonic);
+      const q = generate(cfg, prevItem.current, weightsFor(thisStep), tonic.tonic);
       prevItem.current =
         q.target ?? (q.kind === 'read-note' ? (q.staff?.index ?? null) : null) ??
         q.sequence[q.sequence.length - 1] ?? null;
@@ -220,13 +261,20 @@ export default function Practice() {
         playQuestion(q, tonic.tonic, () => setPhase('question'));
       };
 
-      if (config.drone) {
+      if (cfg.drone) {
         setPhase('playing');
         later(startPlaying, questionIndex === 0 ? 950 : 320);
         return;
       }
 
-      const intro: IntroMode = questionIndex === 0 && introMode === 'none' && usesKey ? 'short' : introMode;
+      const levelIntro: IntroMode = !thisUsesKey
+        ? 'none'
+        : introOverride === 'auto'
+          ? cfg.intro
+          : introOverride;
+      const intro: IntroMode =
+        questionIndex === 0 && levelIntro === 'none' && thisUsesKey ? 'short' : levelIntro;
+
       if (intro === 'none') {
         setPhase('playing');
         later(startPlaying, 260);
@@ -234,20 +282,17 @@ export default function Practice() {
       }
 
       setPhase('intro');
-      const introEnds = playKeyIntro(tonic.tonic, intro, config.mode);
+      const introEnds = playKeyIntro(tonic.tonic, intro, cfg.mode);
       later(startPlaying, Math.max(120, (introEnds - now()) * 1000 + 240));
     },
-    [config, introMode, playQuestion, rollKey, usesKey, weights],
+    [introOverride, plan, playQuestion, rollKey, weightsFor],
   );
 
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    void unlockAudio().then(() => {
-      if (config.drone) startDrone(keyRef.current.tonic);
-      askQuestion(0);
-    });
+    void unlockAudio().then(() => askQuestion(0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -262,7 +307,7 @@ export default function Practice() {
     answered.current = true;
     const tonic = keyRef.current.tonic;
     const correct = answer.every((id, i) => id === q.correctIds[i]);
-    recordAnswer(course.id, level, correct, correct ? creditItems(q) : blamedDegrees(q, answer));
+    recordAnswer(step.courseId, step.levelId, correct, correct ? creditItems(q) : blamedDegrees(q, answer));
 
     const heard = midisFor(q, tonic);
     const homeMidi = degreeToMidi(tonic, 0);
@@ -353,14 +398,17 @@ export default function Practice() {
     const tonic = keyRef.current.tonic;
     const targetMidi = degreeToMidi(tonic, question.target ?? 0);
 
+    // Skipping is what you do when there's no microphone, so it must not
+    // score as a miss — it comes out of the denominator instead.
     if (outcome === 'skipped') {
+      score.current.skipped += 1;
       setPhase('wrong');
       later(advance, 900);
       return;
     }
 
     const hit = outcome === 'hit';
-    recordAnswer(course.id, level, hit, creditItems(question));
+    recordAnswer(step.courseId, step.levelId, hit, creditItems(question));
 
     if (hit) {
       const next = streak + 1;
@@ -406,18 +454,24 @@ export default function Practice() {
 
   function advance() {
     const next = index + 1;
-    if (next >= config.roundLength) {
+    if (next >= plan.length) {
       const weakDegrees = [...score.current.misses.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(([item]) => item);
       stopDrone();
       finishSession({
-        courseId: course.id,
-        levelId: level,
+        // A warm-up spans courses, so it gets its own id; the individual
+        // answers were already credited to their real courses above.
+        courseId: warmup ? 'warmup' : course.id,
+        levelId: warmup ? 0 : level,
         correct: score.current.correct,
-        total: config.roundLength,
+        // The plan is the round — for a warm-up no single level's
+        // roundLength describes it. Skipped questions leave the denominator,
+        // so someone without a microphone isn't marked wrong for it.
+        total: plan.length - score.current.skipped,
         bestStreak: score.current.bestStreak,
         weakDegrees,
+        mix: warmup ? planBreakdown(plan) : undefined,
       });
       playSessionEnd(keyRef.current.tonic, config.mode);
       navigate('/summary', { replace: true });
@@ -469,24 +523,29 @@ export default function Practice() {
   return (
     <Screen className="pad-top pad-bottom">
       <header className="flex items-center gap-4 py-2">
-        <IconButton label="End round" onClick={() => navigate('/practice')}>
+        <IconButton label="End round" onClick={() => navigate(warmup ? '/' : '/practice')}>
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
             <path d="M3 3l9 9M12 3l-9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </IconButton>
         <div className="ml-auto">
-          <Dots total={config.roundLength} index={index} />
+          <Dots total={plan.length} index={index} />
         </div>
       </header>
 
       <div className="flex flex-wrap justify-center gap-2 pt-4">
+        {warmup && (
+          <span className="label rounded-full border border-line px-3 py-1.5 text-subtle">
+            {course.name}
+          </span>
+        )}
         {usesKey ? (
           <span className="label rounded-full border border-accent-dim bg-accent-wash px-3 py-1.5 text-accent">
             Key of {keyLabel(key, config.mode)}
           </span>
         ) : (
           <span className="label rounded-full border border-line px-3 py-1.5 text-subtle">
-            {course.name} · {config.name}
+            {warmup ? config.name : `${course.name} · ${config.name}`}
           </span>
         )}
         {config.drone && (

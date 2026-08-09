@@ -25,9 +25,10 @@ export default function Summary() {
   const allDegreeStats = useStore((s) => s.degreeStats);
   const [promoted, setPromoted] = useState(false);
 
+  const isWarmup = session?.courseId === 'warmup';
   const course = getCourse(session?.courseId ?? '') ?? COURSES[0];
   const level = session?.levelId ?? 1;
-  const canLevelUp = session?.promoted && level < course.levels.length && !promoted;
+  const canLevelUp = !isWarmup && session?.promoted && level < course.levels.length && !promoted;
 
   useEffect(() => {
     if (!session?.promoted) return;
@@ -37,9 +38,13 @@ export default function Summary() {
 
   if (!session) return <Navigate to="/" replace />;
 
-  const config = findLevel(course.levels, session.levelId);
-  const degreeStats = allDegreeStats[statKey(session.courseId, session.levelId)];
-  const pct = Math.round((session.correct / session.total) * 100);
+  const config = findLevel(course.levels, isWarmup ? 1 : session.levelId);
+  const degreeStats = isWarmup
+    ? undefined
+    : allDegreeStats[statKey(session.courseId, session.levelId)];
+  // A round where every question was skipped has nothing to average.
+  const answered = session.total > 0;
+  const pct = answered ? Math.round((session.correct / session.total) * 100) : 0;
 
   function levelUp() {
     setLevel(course.id, level + 1);
@@ -56,18 +61,41 @@ export default function Summary() {
             <span className="text-subtle">/{session.total}</span>
           </p>
           <p className="mt-3 text-[15px] text-muted">
-            {course.name} · {config.name} · {pct}% this round
+            {!answered
+              ? 'Nothing answered this round'
+              : isWarmup
+                ? `Daily Warm-Up · ${pct}%`
+                : `${course.name} · ${config.name} · ${pct}% this round`}
           </p>
         </div>
 
         <Card tone="cool">
           <Label className="text-cool">One thing worth knowing</Label>
           <p className="mt-2.5 text-[15px] leading-relaxed">
-            {observation(session, degreeStats, config.mode, config.kind)}
+            {isWarmup
+              ? warmupObservation(session)
+              : observation(session, degreeStats, config.mode, config.kind)}
           </p>
         </Card>
 
-        {config.kind === 'name-the-note' && (
+        {isWarmup && session.mix && session.mix.length > 0 && (
+          <div>
+            <Label>What you covered</Label>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {session.mix.map(({ courseId, count }) => (
+                <span
+                  key={courseId}
+                  className="rounded-lg border border-line px-2.5 py-1.5 text-[13px] text-muted"
+                >
+                  {getCourse(courseId)?.name ?? courseId}
+                  <span className="tnum ml-1.5 text-subtle">×{count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isWarmup && config.kind === 'name-the-note' && (
           <NoteAccuracy degrees={config.degrees} stats={degreeStats} mode={config.mode} />
         )}
 
@@ -93,8 +121,12 @@ export default function Summary() {
       </div>
 
       <div className="space-y-3 pb-2">
-        <Button onClick={() => navigate(`/practice/${course.id}`, { replace: true })}>
-          Another round
+        <Button
+          onClick={() =>
+            navigate(isWarmup ? '/warmup' : `/practice/${course.id}`, { replace: true })
+          }
+        >
+          {isWarmup ? 'Another warm-up' : 'Another round'}
         </Button>
         <Button variant="ghost" onClick={() => navigate('/', { replace: true })}>
           Done for now
@@ -107,6 +139,22 @@ export default function Summary() {
       </div>
     </Screen>
   );
+}
+
+/**
+ * A warm-up spans courses, so per-item stats would be comparing apples to
+ * oranges. What is worth saying instead is that the mixing itself is the
+ * point — people reliably assume a mixed session went badly *because* it
+ * felt harder than grinding one thing.
+ */
+function warmupObservation(s: SessionResult): string {
+  if (s.correct === s.total) {
+    return 'Every one, across several different skills. Mixed practice is much harder than grinding one course — that is a real result.';
+  }
+  if (s.correct / s.total >= 0.7) {
+    return 'A mixed session always feels worse than practising one thing at a time. It is also what actually sticks, so this score is worth more than the same score in a single course.';
+  }
+  return 'Switching between skills is genuinely harder than staying in one. That difficulty is the point — it is what makes the practice transfer.';
 }
 
 /**
