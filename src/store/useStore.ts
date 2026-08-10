@@ -5,6 +5,7 @@ import { getCourse, statKey } from '@/core/courses';
 import type { Deg } from '@/core/music';
 import type { VocalRange } from '@/core/range';
 import type { BackupPayload } from '@/core/backup';
+import { blendOffset } from '@/core/rhythm';
 
 export type LabelStyle = 'numbers' | 'solfege';
 export type ThemeChoice = 'system' | 'dark' | 'light';
@@ -50,6 +51,13 @@ type State = {
 
   /** Measured once, then every sung reference is moved into it. */
   vocalRange: VocalRange | null;
+  /**
+   * Constant lag between the beat and your tap, learned from rhythm rounds.
+   * Device output latency and personal lean are indistinguishable here, so
+   * this is simply subtracted before timing is judged — which is why there
+   * is no calibration wizard.
+   */
+  tapOffsetMs: number | null;
 
   /** Keyed `courseId:levelId`. */
   stats: Record<string, LevelStats>;
@@ -71,6 +79,7 @@ type State = {
   setLabelStyle: (s: LabelStyle) => void;
   setTheme: (t: ThemeChoice) => void;
   setVocalRange: (r: VocalRange | null) => void;
+  learnTapOffset: (measuredMs: number | null) => void;
   restore: (payload: BackupPayload) => void;
   resetProgress: () => void;
 };
@@ -98,6 +107,7 @@ const INITIAL = {
   labelStyle: 'numbers' as const,
   theme: 'system' as const,
   vocalRange: null as VocalRange | null,
+  tapOffsetMs: null as number | null,
   stats: {} as Record<string, LevelStats>,
   degreeStats: {} as Record<string, Record<number, DegreeStat>>,
   streakDays: 0,
@@ -192,6 +202,9 @@ export const useStore = create<State>()(
       setTheme: (theme) => set({ theme }),
       setVocalRange: (vocalRange) => set({ vocalRange }),
 
+      learnTapOffset: (measuredMs) =>
+        set((s) => ({ tapOffsetMs: blendOffset(s.tapOffsetMs, measuredMs) })),
+
       /**
        * Replace everything with a validated backup. A restore is a *replace*,
        * not a merge: merging two histories of the same drill would produce
@@ -207,9 +220,15 @@ export const useStore = create<State>()(
           hasOnboarded: true,
         }),
 
-      // The measured range survives a progress reset on purpose: it describes
-      // the singer, not their progress, and re-measuring is a chore.
-      resetProgress: () => set({ ...INITIAL, hasOnboarded: true, vocalRange: get().vocalRange }),
+      // The measured range and the tap offset survive a progress reset: they
+      // describe the singer and their device, not their progress.
+      resetProgress: () =>
+        set({
+          ...INITIAL,
+          hasOnboarded: true,
+          vocalRange: get().vocalRange,
+          tapOffsetMs: get().tapOffsetMs,
+        }),
     }),
     {
       name: 'noteworthy.v1',

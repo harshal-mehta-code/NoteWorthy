@@ -9,6 +9,7 @@
 import { isSingKind, type Level, type LevelKind } from './levels';
 import { INTERVAL_CHARACTER, INTERVAL_LONG, INTERVAL_SHORT } from './intervals';
 import { buildPhrase } from './singing';
+import { buildPattern, soundingNotes } from './rhythm';
 import {
   REAL_PROGRESSIONS,
   ROMAN,
@@ -65,6 +66,8 @@ export type Question = {
   staff?: { index: number; clef: Clef };
   /** Chords to play in order, for progression questions. */
   chordSeq?: number[][];
+  /** The written rhythm, for tap questions. */
+  pattern?: import('./rhythm').RhythmPattern;
   /** Shown as the headline in feedback. */
   answerLabel: string;
   /** One line under it, explaining *why*. */
@@ -94,6 +97,7 @@ export function generate(
   if (level.kind === 'chord-quality') return chordQuality(level);
   if (level.kind === 'chord-inversion') return chordInversion(level);
   if (level.kind === 'progression-id') return progressionId(level, tonic ?? 60);
+  if (level.kind === 'tap-rhythm') return tapRhythm(level);
 
   switch (level.kind) {
     case 'home-or-not':
@@ -138,6 +142,31 @@ function sing(level: Level, previous: Deg | null, weights?: Map<Deg, number>): Q
       level.kind === 'sing-home'
         ? 'Any octave counts — sing it where it sits comfortably.'
         : `${degreeNickname(target, level.mode)}. Any octave counts.`,
+  };
+}
+
+/**
+ * A written rhythm to tap. There is nothing to hear and nothing to pick —
+ * the pattern is the question and the performance is the answer.
+ */
+function tapRhythm(level: Level): Question {
+  const pattern = buildPattern(
+    level.noteValues ?? ['quarter'],
+    level.bars ?? 1,
+    4,
+    level.restChance ?? 0,
+  );
+  const count = soundingNotes(pattern).length;
+
+  return {
+    kind: 'tap-rhythm',
+    sequence: [],
+    octaveUp: [],
+    options: [],
+    correctIds: [],
+    pattern,
+    answerLabel: `${count} ${count === 1 ? 'note' : 'notes'}`,
+    explain: 'Rests are counted, not waited out — keep the pulse going underneath.',
   };
 }
 
@@ -465,6 +494,10 @@ export function singDegrees(q: Question): Deg[] {
  */
 export function blamedDegrees(q: Question, answer: string[]): Deg[] {
   if (isSingKind(q.kind)) return singDegrees(q);
+  // Rhythm is keyed on note *values* and blame depends on which notes were
+  // actually mistimed, which only the grader knows. Practice passes those in
+  // directly rather than inferring them from an answer that doesn't exist.
+  if (q.kind === 'tap-rhythm') return [];
   // Intervals are keyed by size in semitones; read-note by diatonic index.
   // Both live in their own course, so the key spaces never collide.
   if (q.kind === 'interval-id') return [Number(q.correctIds[0])];

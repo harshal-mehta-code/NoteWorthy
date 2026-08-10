@@ -310,3 +310,44 @@ export function playLevelUp(tonic: number): void {
 export function playTapTick(midi: number): void {
   voice(midi, now() + 0.005, 0.28, 0.16);
 }
+
+/**
+ * A metronome click, scheduled on the audio clock.
+ *
+ * Noise through a tight bandpass rather than a pitched note: a click has to
+ * be unmistakably *not* music, or it competes with the rhythm being read and
+ * people start hearing it as part of the pattern. Downbeats sit higher and
+ * louder so the bar is audible without counting.
+ */
+export function scheduleClick(at: number, accent = false): void {
+  const c = build();
+  const dur = 0.045;
+  const frames = Math.ceil(c.sampleRate * dur);
+  const buffer = c.createBuffer(1, frames, c.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < frames; i++) {
+    // An exponential decay, so it reads as a tick and not a burst.
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / frames, 6);
+  }
+
+  const source = c.createBufferSource();
+  source.buffer = buffer;
+
+  const band = c.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = accent ? 2400 : 1500;
+  band.Q.value = 2.2;
+
+  const gain = c.createGain();
+  gain.gain.value = accent ? 0.4 : 0.24;
+
+  source.connect(band);
+  band.connect(gain);
+  gain.connect(master ?? c.destination);
+  source.start(at);
+}
+
+/** The audio clock, which is what tap timing has to be measured against. */
+export function audioNow(): number {
+  return build().currentTime;
+}

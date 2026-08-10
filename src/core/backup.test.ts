@@ -11,6 +11,7 @@ const FULL: BackupPayload = {
   introOverride: 'short',
   theme: 'dark',
   vocalRange: { low: 45, high: 69 },
+  tapOffsetMs: 85,
   stats: { 'find-the-note:6': { recent: [true, false, true], correct: 12, total: 15 } },
   degreeStats: { 'find-the-note:6': { 7: { right: 8, wrong: 2, recent: [true, true] } } },
   streakDays: 5,
@@ -103,6 +104,18 @@ describe('cleaning a damaged or hostile payload', () => {
     expect(r.payload.theme).toBe('system');
     expect(r.payload.lastCourse).toBe('find-the-note');
     expect(r.payload.vocalRange).toBeNull();
+    expect(r.payload.tapOffsetMs).toBeNull();
+  });
+
+  it('clamps a stored tap lag to something a device could plausibly have', () => {
+    const offset = (value: unknown) => {
+      const r = parse({ tapOffsetMs: value });
+      return r.ok ? r.payload.tapOffsetMs : 'rejected';
+    };
+    expect(offset(9000)).toBe(400);
+    expect(offset(-9000)).toBe(-400);
+    expect(offset(85)).toBe(85);
+    expect(offset('slow')).toBeNull();
   });
 
   it('drops settings values it does not recognise', () => {

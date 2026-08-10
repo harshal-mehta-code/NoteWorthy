@@ -3,8 +3,11 @@ import { useNavigate, useParams } from 'react-router';
 import { Dots, IconButton, Screen, Sheet } from '@/components/ui';
 import { SingPanel, type SingOutcome } from '@/components/SingPanel';
 import { PhrasePanel, type PhraseOutcome } from '@/components/PhrasePanel';
+import { TapPanel, type TapOutcome } from '@/components/TapPanel';
+import { RhythmStaff } from '@/components/RhythmStaff';
+import { gradeRhythm, offsetNote, soundingNotes, type RhythmGrade } from '@/core/rhythm';
 import { Staff } from '@/components/Staff';
-import { INTRO_HELP, INTRO_LABEL, findLevel, isPhraseKind, isSingKind } from '@/core/levels';
+import { INTRO_HELP, INTRO_LABEL, findLevel, isPhraseKind, isSingKind, usesKey } from '@/core/levels';
 import type { IntroMode } from '@/core/levels';
 import { getCourse, COURSES } from '@/core/courses';
 import { buildWarmup, planBreakdown, type PlanStep } from '@/core/warmup';
@@ -58,6 +61,8 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const introOverride = useStore((s) => s.introOverride);
   const allDegreeStats = useStore((s) => s.degreeStats);
   const vocalRange = useStore((s) => s.vocalRange);
+  const tapOffsetMs = useStore((s) => s.tapOffsetMs);
+  const learnTapOffset = useStore((s) => s.learnTapOffset);
   const recordAnswer = useStore((s) => s.recordAnswer);
   const finishSession = useStore((s) => s.finishSession);
 
@@ -82,16 +87,13 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const level = step.levelId;
   const config = findLevel(course.levels, level);
 
-  /** Interval and reading questions have no tonal centre to establish. */
-  const usesKey =
-    config.kind !== 'interval-id' &&
-    config.kind !== 'read-note' &&
-    config.kind !== 'chord-quality' &&
-    config.kind !== 'chord-inversion';
+  /** Intervals, chords, reading and rhythm have no tonal centre to establish. */
+  const inKey = usesKey(config.kind);
   const progression = config.kind === 'progression-id';
   const singing = isSingKind(config.kind);
   const phrase = isPhraseKind(config.kind);
   const reading = config.kind === 'read-note';
+  const tapping = config.kind === 'tap-rhythm';
 
   const rollKey = useCallback(
     (): KeyChoice =>
@@ -105,7 +107,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const keyRef = useRef(key);
   keyRef.current = key;
 
-  const introMode: IntroMode = !usesKey
+  const introMode: IntroMode = !inKey
     ? 'none'
     : config.drone
       ? 'none'
@@ -121,6 +123,8 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const [helpOpen, setHelpOpen] = useState(false);
   /** Per-note results of a sung phrase, kept so the reveal can show them. */
   const [phraseSlots, setPhraseSlots] = useState<PhraseSlot[] | null>(null);
+  /** Per-note results of a tapped rhythm, likewise. */
+  const [rhythmGrade, setRhythmGrade] = useState<RhythmGrade | null>(null);
 
   const score = useRef({ correct: 0, skipped: 0, bestStreak: 0, misses: new Map<number, number>() });
   const timers = useRef<number[]>([]);
@@ -257,15 +261,12 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
       answered.current = false;
       setSlots([]);
       setPhraseSlots(null);
+      setRhythmGrade(null);
 
       const thisStep = plan[Math.min(questionIndex, plan.length - 1)];
       const thisCourse = getCourse(thisStep.courseId) ?? COURSES[0];
       const cfg = findLevel(thisCourse.levels, thisStep.levelId);
-      const thisUsesKey =
-        cfg.kind !== 'interval-id' &&
-        cfg.kind !== 'read-note' &&
-        cfg.kind !== 'chord-quality' &&
-        cfg.kind !== 'chord-inversion';
+      const thisUsesKey = usesKey(cfg.kind);
 
       // The drone belongs to a level, not a round — in a warm-up it has to
       // appear and disappear between questions.
@@ -507,6 +508,62 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     later(advance, question.sequence.length * gap * 1000 + 1800);
   }
 
+  /**
+   * Grade a tapped rhythm.
+   *
+   * Passing means every note landed inside the tolerance and there were no
+   * stray taps. A rhythm with an extra note in it is a different rhythm, so
+   * "mostly right plus one extra" is not most of the way there.
+   */
+  function handleTaps(outcome: TapOutcome) {
+    if (!question?.pattern || answered.current) return;
+    answered.current = true;
+
+    const msPerBeat = 60000 / (config.bpm ?? 80);
+    const grade = gradeRhythm(
+      outcome.taps,
+      question.pattern,
+      msPerBeat,
+      config.tapTolerance ?? 120,
+      tapOffsetMs,
+    );
+    setRhythmGrade(grade);
+    // Carry the lag forward. A one-bar pattern may be too short to measure
+    // its own, and the lag belongs to the device rather than to the bar.
+    learnTapOffset(grade.measuredOffsetMs);
+
+    const notes = soundingNotes(question.pattern);
+    // Items are note values, keyed in sixteenths, so stats can say "eighth
+    // notes are your weakest" rather than naming a position in one bar.
+    const missedValues = grade.notes
+      .filter((n) => n.state !== 'hit')
+      .map((n) => Math.round(notes[n.index].duration * 4));
+    const allValues = notes.map((n) => Math.round(n.duration * 4));
+
+    const clean = grade.accuracy === 1 && grade.extraTaps === 0;
+    recordAnswer(step.courseId, step.levelId, clean, clean ? allValues : missedValues);
+
+    if (clean) {
+      const next = streak + 1;
+      setStreak(next);
+      score.current.correct += 1;
+      score.current.bestStreak = Math.max(score.current.bestStreak, next);
+      setPhase('correct');
+      playCorrectSimple(keyRef.current.tonic, degreeToMidi(keyRef.current.tonic, 0));
+      later(advance, HOLD_CORRECT_MS + 500);
+      return;
+    }
+
+    setStreak(0);
+    setPhase('wrong');
+    for (const value of missedValues) {
+      score.current.misses.set(value, (score.current.misses.get(value) ?? 0) + 1);
+    }
+    // The staff itself shows what went where, so the hold just has to be long
+    // enough to read it rather than long enough to hear something.
+    later(advance, 4200);
+  }
+
   function replayReference() {
     if (!question) return;
     const tonic = keyRef.current.tonic;
@@ -622,7 +679,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
             {course.name}
           </span>
         )}
-        {usesKey ? (
+        {inKey ? (
           <span className="label rounded-full border border-accent-dim bg-accent-wash px-3 py-1.5 text-accent">
             Key of {keyLabel(key, config.mode)}
           </span>
@@ -678,6 +735,26 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
                 </button>{' '}
                 and they'll fit your voice instead.
               </p>
+            )}
+          </div>
+        ) : tapping && question?.pattern ? (
+          <div className="w-full">
+            {revealed ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-line bg-surface px-2 py-4">
+                  <RhythmStaff pattern={question.pattern} results={rhythmGrade?.notes} />
+                </div>
+                {rhythmGrade && <RhythmReport grade={rhythmGrade} />}
+              </div>
+            ) : (
+              <TapPanel
+                key={index}
+                pattern={question.pattern}
+                bpm={config.bpm ?? 80}
+                countIn={config.countIn ?? 4}
+                clickThrough={config.clickThrough ?? true}
+                onOutcome={handleTaps}
+              />
             )}
           </div>
         ) : reading && question?.staff ? (
@@ -747,7 +824,11 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
             {phase === 'intro'
               ? 'Settling into the key…'
               : phase === 'playing'
-                ? 'Listen…'
+                ? // There is nothing to hear in a written rhythm; the pattern
+                  // is already on screen and the count-in does the waiting.
+                  tapping
+                  ? ''
+                  : 'Listen…'
                 : phase === 'question'
                   ? promptFor(question, slots.length, totalSlots)
                   : ''}
@@ -755,7 +836,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         )}
 
         <div className="flex min-h-[66px] max-w-[32ch] flex-col items-center justify-center gap-1.5">
-          {revealed && question && (
+          {revealed && question && !tapping && (
             <>
               {/* For a phrase, which notes landed matters more than the
                   pass/fail — "you got four of five, the third was flat" is
@@ -805,7 +886,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         />
       )}
 
-      {!singing && (
+      {!singing && !tapping && (
         <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
           {question?.options.map((option) => {
             const tone =
@@ -855,9 +936,9 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
       <div className="flex items-center justify-between gap-2 pt-3 pb-1 text-[13px]">
         <button
           onClick={replay}
-          disabled={phase !== 'question' || singing || reading}
+          disabled={phase !== 'question' || singing || reading || tapping}
           className={`py-2 text-subtle transition hover:text-ink disabled:opacity-40 ${
-            singing || reading ? 'invisible' : ''
+            singing || reading || tapping ? 'invisible' : ''
           }`}
         >
           Play again
@@ -872,7 +953,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         <HelpBody kind={config.kind} droning={config.drone} minor={config.mode === 'minor'} />
         <p className="text-subtle">
           {course.name} · level {config.id} — {config.name}
-          {usesKey && !config.drone && (
+          {inKey && !config.drone && (
             <>
               {' '}
               — <span className="text-ink">{INTRO_LABEL[introMode]}</span>, {INTRO_HELP[introMode]}
@@ -991,6 +1072,25 @@ function HelpBody({
       </>
     );
   }
+  if (kind === 'tap-rhythm') {
+    return (
+      <>
+        <p>
+          A bar of clicks counts you in, then you tap the rhythm on the page. Space bar works too.
+        </p>
+        <p>
+          <strong className="text-ink">Rests are counted, not waited out.</strong> Keep the pulse
+          running underneath and the silence takes care of itself — trying to feel the gap as a gap
+          is what makes rests hard.
+        </p>
+        <p className="text-subtle">
+          A constant lag between your tap and the app is measured and removed before anything is
+          judged, so there is nothing to calibrate. You are graded on the spacing between your
+          taps, and told separately if you were leaning early or late.
+        </p>
+      </>
+    );
+  }
   if (kind === 'sing-phrase') {
     return (
       <>
@@ -1044,6 +1144,30 @@ function HelpBody({
   );
 }
 
+/**
+ * What happened, in the order that helps: how many landed, then the constant
+ * lag if there was one, then stray taps.
+ */
+function RhythmReport({ grade }: { grade: RhythmGrade }) {
+  const hits = grade.notes.filter((n) => n.state === 'hit').length;
+  const note = offsetNote(grade.offsetMs);
+
+  return (
+    <div className="space-y-2 text-center">
+      <p
+        className={`text-xl font-bold tracking-tight ${
+          hits === grade.notes.length && grade.extraTaps === 0 ? 'text-correct' : 'text-wrong'
+        }`}
+      >
+        {hits} of {grade.notes.length} in time
+        {grade.extraTaps > 0 &&
+          ` · ${grade.extraTaps} extra ${grade.extraTaps === 1 ? 'tap' : 'taps'}`}
+      </p>
+      {note && <p className="mx-auto max-w-[34ch] text-[13px] leading-snug text-subtle">{note}</p>}
+    </div>
+  );
+}
+
 /** A phrase verdict that says what actually happened, not just pass/fail. */
 function phraseVerdict(slots: PhraseSlot[]): string {
   const hits = slots.filter((s) => s.state === 'hit').length;
@@ -1072,6 +1196,8 @@ function promptFor(q: Question | null, filled: number, total: number): string {
       return 'Find it and sing it.';
     case 'sing-phrase':
       return 'Sing the whole line back.';
+    case 'tap-rhythm':
+      return '';
     case 'home-or-not':
       return 'Was that home?';
     case 'rest-or-move':

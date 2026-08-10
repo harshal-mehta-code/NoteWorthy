@@ -17,6 +17,15 @@ import {
 } from '@/store/useStore';
 import { playLevelUp } from '@/audio/engine';
 
+/** Rhythm stats are keyed by note value in sixteenths. */
+const NOTE_VALUE_NAME: Record<number, string> = {
+  1: 'sixteenth notes',
+  2: 'eighth notes',
+  4: 'quarter notes',
+  8: 'half notes',
+  16: 'whole notes',
+};
+
 export default function Summary() {
   const navigate = useNavigate();
   const session = useStore((s) => s.lastSession);
@@ -181,6 +190,9 @@ function observation(
         return `${INVERSION_LABEL[item]} position`;
       case 'progression-id':
         return ROMAN_ORDER[item] ?? 'that chord';
+      // Rhythm items are note values keyed in sixteenths.
+      case 'tap-rhythm':
+        return NOTE_VALUE_NAME[item] ?? 'that note value';
       default:
         return `${degreeLabel(item, mode)} · ${degreeSolfege(item)}`;
     }
@@ -194,7 +206,8 @@ function observation(
       kind === 'interval-id' ||
       kind === 'read-note' ||
       kind === 'chord-quality' ||
-      kind === 'chord-inversion'
+      kind === 'chord-inversion' ||
+      kind === 'tap-rhythm'
     ) {
       return '';
     }

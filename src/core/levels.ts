@@ -34,6 +34,8 @@ export type LevelKind =
   | 'sing-degree'
   /** Sing back a whole phrase, note by note. */
   | 'sing-phrase'
+  /** A rhythm is written out. Tap it. */
+  | 'tap-rhythm'
   /** Two notes play. How far apart were they? */
   | 'interval-id'
   /** A note is drawn on a stave. What is it called? */
@@ -58,6 +60,21 @@ export function isSingKind(kind: LevelKind): boolean {
 /** Sung levels answered a note at a time rather than with one held pitch. */
 export function isPhraseKind(kind: LevelKind): boolean {
   return kind === 'sing-phrase';
+}
+
+/**
+ * Whether a question sits inside a key, and so needs an intro to establish
+ * one. Intervals and chords are distances and colours wherever you put them,
+ * reading is about the page, and rhythm has no pitch at all.
+ */
+export function usesKey(kind: LevelKind): boolean {
+  return (
+    kind !== 'interval-id' &&
+    kind !== 'read-note' &&
+    kind !== 'chord-quality' &&
+    kind !== 'chord-inversion' &&
+    kind !== 'tap-rhythm'
+  );
 }
 
 export const INTRO_LABEL: Record<IntroMode, string> = {
@@ -140,6 +157,19 @@ export type Level = {
   phraseGap?: number;
   /** How long each sung note must hold before it counts. */
   phraseHoldMs?: number;
+
+  // --- tap-rhythm only ---------------------------------------------------
+  noteValues?: import('./rhythm').NoteValue[];
+  bars?: number;
+  bpm?: number;
+  /** How often a chosen note becomes a rest instead. */
+  restChance?: number;
+  /** Beats of click before the bar starts. */
+  countIn?: number;
+  /** Keep the click going under the pattern, or drop out after the count-in. */
+  clickThrough?: boolean;
+  /** How far a tap may sit from the beat and still count, in ms. */
+  tapTolerance?: number;
 
   // --- progression levels only ------------------------------------------
   romanSet?: import('./progressions').Roman[];

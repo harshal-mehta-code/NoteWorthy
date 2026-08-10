@@ -14,6 +14,7 @@ import { NOTE_READING } from './reading';
 import { CHORDS } from './chords';
 import { PROGRESSIONS } from './progressions';
 import { SING_PHRASES } from './singing';
+import { RHYTHM } from './rhythmLevels';
 import { LESSONS } from '@/content/lessons';
 
 export type Pillar = 'ear' | 'reading' | 'theory' | 'voice';
@@ -132,11 +133,10 @@ export const COURSES: Course[] = [
   {
     id: 'rhythm-reading',
     pillar: 'reading',
-    name: 'Rhythm',
-    blurb: 'Tap what you read, in time.',
-    status: 'planned',
-    levels: [],
-    planNote: 'Needs latency calibration first, or the scoring is meaningless.',
+    name: 'Read the Rhythm',
+    blurb: 'Tap what you read, in time. Quarter notes to sixteenths, with and without a click.',
+    status: 'ready',
+    levels: RHYTHM,
   },
   {
     id: 'scroll-reading',

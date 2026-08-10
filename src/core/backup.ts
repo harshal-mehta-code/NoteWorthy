@@ -29,6 +29,7 @@ export type BackupPayload = {
   introOverride: string;
   theme: string;
   vocalRange: VocalRange | null;
+  tapOffsetMs: number | null;
   stats: Record<string, LevelStats>;
   degreeStats: Record<string, Record<number, DegreeStat>>;
   streakDays: number;
@@ -110,6 +111,7 @@ export function parseBackup(text: string): RestoreResult {
     introOverride: pick(p.introOverride, INTROS, 'auto'),
     theme: pick(p.theme, THEMES, 'system'),
     vocalRange: cleanRange(p.vocalRange),
+    tapOffsetMs: cleanOffset(p.tapOffsetMs),
     stats,
     degreeStats: cleanDegreeStats(p.degreeStats),
     streakDays: count(p.streakDays),
@@ -198,6 +200,12 @@ function cleanDegreeStats(value: unknown): Record<string, Record<number, DegreeS
     out[key] = cleaned;
   }
   return out;
+}
+
+/** A lag beyond this is a wild attempt, not a device. */
+function cleanOffset(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return Math.max(-400, Math.min(400, Math.round(value)));
 }
 
 function cleanRange(value: unknown): VocalRange | null {

@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.8 shipped.** Seven courses across all four pillars, a Daily Warm-Up that mixes them, vocal range mapping, and backup to a file.
+**Status: v0.9 shipped.** Eight courses across all four pillars, a Daily Warm-Up that mixes them, vocal range mapping, rhythm, and backup to a file.
 
 ```bash
 npm install
@@ -18,7 +18,7 @@ npm run dev
 | | |
 |---|---|
 | 🎧 **Ear training** | **Find the Note** (17 levels), **Chords** (7), **Progressions** (7) and **Intervals** (8). Still to come: melodic dictation. |
-| 👁 **Sight reading** *(started)* | Naming notes on the stave by landmark, both clefs and ledger lines. Still to come: rhythm, and scrolling reads that never stop. |
+| 👁 **Sight reading** *(started)* | **Read the Note** (7 levels) by landmark, both clefs and ledger lines, and **Read the Rhythm** (9 levels) tapped in time. Still to come: scrolling reads that never stop. |
 | 🧠 **Music theory** *(started)* | Nine interactive lessons with a playable keyboard and a circle of fifths you can hear. More of the curriculum to follow. |
 | 🎤 **Vocal training** *(started)* | **Sing a Phrase** (8 levels) plus sung answers inside Find the Note, live pitch feedback, and range mapping that fits every prompt to your voice. Still to come: sight-singing with your pitch traced over the staff. |
 
@@ -36,7 +36,7 @@ npm run dev
 
 ## What's built
 
-**Six courses across all four pillars**, all reachable from a Practice library that also lists what's still planned — hiding the unbuilt parts made a seventeen-level app look like a one-trick toy.
+**Eight courses across all four pillars**, all reachable from a Practice library that also lists what's still planned — hiding the unbuilt parts made a seventeen-level app look like a one-trick toy.
 
 ### 🎧 Find the Note — seventeen levels across four stages
 
@@ -62,6 +62,11 @@ Name notes on the stave, built on **landmarks** rather than "Every Good Boy Dese
 
 ### 🧠 Foundations — nine lessons
 Short interactive lessons with a keyboard you can play: how the keyboard is laid out, half and whole steps, what makes a scale major, why one note feels like home, what an interval actually is, how triads are built, why chords get numbers instead of names, what changes in a minor key, and the circle of fifths — as a ring you tap to hear rather than a diagram to memorise. Every lesson ends by pointing at the drill where the same idea turns up; that linkage is what stops theory becoming trivia.
+
+### 👁 Read the Rhythm — nine levels
+Tap what you read. Quarter notes, then held notes, rests, eighths, two bars, sixteenths, and finally everything at once with the click dropping out after the count-in — which is the real step, because playing against a click that has stopped is what tests whether you are *keeping* time or just following it.
+
+Timing is the awkward part: between screen, audio output, input stack and person there is a constant lag that has nothing to do with musicianship and is easily large enough to fail someone who played perfectly. The usual fix is a calibration wizard before you're allowed to start. Instead the median offset across the attempt is measured and subtracted before anything is judged, so **there is nothing to calibrate** — and the offset is reported back rather than discarded, because "you were consistently 60ms behind the beat" is worth knowing. It's also remembered between rounds, so a bar too short to measure its own lag still gets the benefit of one.
 
 ### 🎤 Sing a Phrase — eight levels
 Sing back two notes, then three, then four- and five-note scale runs, then runs that turn around at the top, then the same in minor. Two axes move, one at a time: how many notes, and how fast they arrive — the later levels are the agility work, where speed is the difficulty.

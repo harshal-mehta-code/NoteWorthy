@@ -198,6 +198,7 @@ function Backup() {
       introOverride: store.introOverride,
       theme: store.theme,
       vocalRange: store.vocalRange,
+      tapOffsetMs: store.tapOffsetMs,
       stats: store.stats,
       degreeStats: store.degreeStats,
       streakDays: store.streakDays,

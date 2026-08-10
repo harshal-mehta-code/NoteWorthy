@@ -301,13 +301,15 @@ Full keyboard operation for every drill, screen-reader announcements, color-blin
 
 **Also shipped since** — the Daily Warm-Up (a mixed, interleaved session drawn from every started course, with a share of it reaching back below the current level); vocal range mapping and auto-transposition of every sung prompt; five more theory lessons including a playable circle of fifths; the Sing a Phrase course (eight levels of phrases and agility runs, graded per note); and backup/restore to a JSON file.
 
+**And since that** — Read the Rhythm (nine levels, tapped, with latency cancelled by measurement rather than a calibration wizard).
+
 **Next, in order** — each is a self-contained increment small enough to review in one sitting:
 
 1. **Response time as a second signal** — accuracy alone hides the difference between knowing a note and working it out. Cheap to capture, and it feeds everything below.
 2. **FSRS scheduling across levels.** The warm-up already reaches back into old material, but it does so by weight rather than by when a thing is actually due. This replaces that heuristic with a real schedule.
 3. **The Musicianship Map** — the skill constellation across all four pillars, dimming as retention decays. Needs 2 first: without a real decay model there is nothing honest to dim.
 4. **Melodic dictation** — hear a phrase, write it down. The listening counterpart to Sing a Phrase, which already generates and grades phrases.
-5. Rhythm reading, once latency calibration exists.
+5. **Scroll reading** with the lookahead veil — the last big piece of the reading pillar, and the one the prototype still owns.
 
 **Deliberately not next:** XP and achievements. The gamification that pays here is musical (feedback that resolves to the tonic, streaks that climb the scale) and it is already in. A points layer on top would be the generic version of something the app does better.
 
