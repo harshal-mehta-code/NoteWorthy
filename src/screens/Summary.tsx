@@ -16,6 +16,7 @@ import {
   type SessionResult,
 } from '@/store/useStore';
 import { playLevelUp } from '@/audio/engine';
+import { sessionAdvice } from '@/core/voiceHealth';
 
 /** Rhythm stats are keyed by note value in sixteenths. */
 const NOTE_VALUE_NAME: Record<number, string> = {
@@ -31,10 +32,16 @@ export default function Summary() {
   const session = useStore((s) => s.lastSession);
   const setLevel = useStore((s) => s.setLevel);
   const streakDays = useStore((s) => s.streakDays);
+  const sungMsToday = useStore((s) => s.sungMsToday);
+  const sungDay = useStore((s) => s.sungDay);
   const allDegreeStats = useStore((s) => s.degreeStats);
   const [promoted, setPromoted] = useState(false);
 
   const isWarmup = session?.courseId === 'warmup';
+  // Yesterday's singing has no bearing on today's voice.
+  const today = new Date();
+  const dayId = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const advice = sessionAdvice(sungDay === dayId ? sungMsToday : 0);
   const course = getCourse(session?.courseId ?? '') ?? COURSES[0];
   const level = session?.levelId ?? 1;
   const canLevelUp = !isWarmup && session?.promoted && level < course.levels.length && !promoted;
@@ -128,6 +135,28 @@ export default function Summary() {
           </Card>
         )}
       </div>
+
+      {/* Vocal health lives here rather than mid-round: interrupting someone
+          between two questions is the worst possible moment, and the end of a
+          round is when they are deciding whether to do another. */}
+      {session.sang && (
+        <div className="space-y-3 pb-2">
+          {advice && (
+            <Card tone={advice.level === 'stop' ? 'accent' : 'cool'}>
+              <Label className={advice.level === 'stop' ? 'text-accent' : 'text-cool'}>
+                {advice.level === 'stop' ? 'Time to stop' : 'Your voice'}
+              </Label>
+              <p className="mt-2.5 text-[15px] leading-relaxed">{advice.message}</p>
+            </Card>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/voice/cooldown', { replace: true })}
+          >
+            Cool down{advice?.level === 'stop' ? ' and finish' : ''}
+          </Button>
+        </div>
+      )}
 
       <div className="space-y-3 pb-2">
         <Button

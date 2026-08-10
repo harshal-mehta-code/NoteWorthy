@@ -305,9 +305,12 @@ Full keyboard operation for every drill, screen-reader announcements, color-blin
 
 **And since that** — response time as a second signal, a forgetting-curve retention model, the Musicianship Map, warm-up scheduling driven by that model, and five more theory lessons closing the gap where the reading and rhythm courses drilled notation no lesson explained (plus the linkage rule's missing direction, and a browsable lesson index).
 
+**And since that** — the vocal-health guardrails from 01-PEDAGOGY §4.4, which were the one stated non-negotiable still unbuilt: guided warm-up and cool-down routines pitched to the measured range, session-length nudges, backing off under strain, and the training-not-diagnosis copy.
+
 **Next, in order** — each is a self-contained increment small enough to review in one sitting:
 
-1. **Melodic dictation** — hear a phrase, write it down. The listening counterpart to Sing a Phrase, which already generates and grades phrases.
+1. **The Full Circle** ⭐⭐⭐ — the flagship. It needs ear, reading and vocal, and all three now exist, so it is unblocked for the first time.
+2. **Melodic dictation** — hear a phrase, write it down. The listening counterpart to Sing a Phrase, which already generates and grades phrases.
 5. **Scroll reading** with the lookahead veil — the last big piece of the reading pillar, and the one the prototype still owns.
 
 **Deliberately not next:** XP and achievements. The gamification that pays here is musical (feedback that resolves to the tonic, streaks that climb the scale) and it is already in. A points layer on top would be the generic version of something the app does better.

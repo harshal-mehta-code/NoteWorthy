@@ -32,6 +32,8 @@ export type SessionResult = {
   weakDegrees: Deg[];
   /** Which courses a mixed round drew on. Absent for single-course rounds. */
   mix?: { courseId: string; count: number }[];
+  /** Whether any of it was sung, so the summary can offer a cool-down. */
+  sang?: boolean;
   promoted: boolean;
   finishedAt: number;
 };
@@ -59,6 +61,14 @@ type State = {
    * is no calibration wizard.
    */
   tapOffsetMs: number | null;
+  /**
+   * When the last vocal warm-up finished, and how long has been spent singing
+   * today. Both exist for the vocal-health rules in docs/01-PEDAGOGY.md §4.4,
+   * which is the one part of the plan where being wrong can hurt someone.
+   */
+  lastWarmUpAt: number | null;
+  sungMsToday: number;
+  sungDay: string | null;
 
   /** Keyed `courseId:levelId`. */
   stats: Record<string, LevelStats>;
@@ -87,6 +97,8 @@ type State = {
   setTheme: (t: ThemeChoice) => void;
   setVocalRange: (r: VocalRange | null) => void;
   learnTapOffset: (measuredMs: number | null) => void;
+  markWarmedUp: () => void;
+  addSungTime: (ms: number) => void;
   recordRetention: (
     courseId: string,
     levelId: number,
@@ -121,6 +133,9 @@ const INITIAL = {
   theme: 'system' as const,
   vocalRange: null as VocalRange | null,
   tapOffsetMs: null as number | null,
+  lastWarmUpAt: null as number | null,
+  sungMsToday: 0,
+  sungDay: null as string | null,
   stats: {} as Record<string, LevelStats>,
   memories: {} as Record<string, Memory>,
   degreeStats: {} as Record<string, Record<number, DegreeStat>>,
@@ -219,6 +234,19 @@ export const useStore = create<State>()(
       learnTapOffset: (measuredMs) =>
         set((s) => ({ tapOffsetMs: blendOffset(s.tapOffsetMs, measuredMs) })),
 
+      markWarmedUp: () => set({ lastWarmUpAt: Date.now() }),
+
+      /**
+       * Singing time, reset each day. The nudges are about one session's
+       * accumulated load, and yesterday's has no bearing on today's voice.
+       */
+      addSungTime: (ms) =>
+        set((s) => {
+          const today = dayKey();
+          const base = s.sungDay === today ? s.sungMsToday : 0;
+          return { sungMsToday: base + ms, sungDay: today };
+        }),
+
       /**
        * Fold a round's result into what is retained. Called per course+level
        * rather than per answer: these drills ask several questions of the same
@@ -263,6 +291,7 @@ export const useStore = create<State>()(
           hasOnboarded: true,
           vocalRange: get().vocalRange,
           tapOffsetMs: get().tapOffsetMs,
+          lastWarmUpAt: get().lastWarmUpAt,
         }),
     }),
     {

@@ -12,6 +12,7 @@ import type { IntroMode } from '@/core/levels';
 import { getCourse, COURSES } from '@/core/courses';
 import { buildWarmup, planBreakdown, type PlanStep } from '@/core/warmup';
 import { isUsable, octaveShiftFor, shiftIntoRange } from '@/core/range';
+import { isWarm, shouldEase, type SungAttempt } from '@/core/voiceHealth';
 import { directionLabel } from '@/core/intervals';
 import { buildChord, type ChordQuality } from '@/core/chords';
 import { KEYS, degreeLabel, degreeToMidi, keyLabel, pickRandom, type KeyChoice } from '@/core/music';
@@ -64,6 +65,8 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const allMemories = useStore((s) => s.memories);
   const vocalRange = useStore((s) => s.vocalRange);
   const tapOffsetMs = useStore((s) => s.tapOffsetMs);
+  const lastWarmUpAt = useStore((s) => s.lastWarmUpAt);
+  const addSungTime = useStore((s) => s.addSungTime);
   const learnTapOffset = useStore((s) => s.learnTapOffset);
   const recordAnswer = useStore((s) => s.recordAnswer);
   const recordRetention = useStore((s) => s.recordRetention);
@@ -181,6 +184,17 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     perStep.current.set(key, entry);
   };
 
+  /** Wall-clock time spent in this round, counted only if it involved singing. */
+  const roundStartedAt = useRef(performance.now());
+  const sangSomething = useRef(false);
+  /**
+   * Recent sung attempts, for the one strain-adjacent signal this app can
+   * actually observe: repeated misses at the top of the range. When that
+   * shows up the target drops an octave rather than pushing (§4.4).
+   */
+  const sungAttempts = useRef<SungAttempt[]>([]);
+  const [easing, setEasing] = useState(false);
+
   const clearTimers = () => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
@@ -208,18 +222,23 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const midisFor = useCallback(
     (q: Question, tonic: number) => {
       const midis = q.midis ?? q.sequence.map((deg, i) => degreeToMidi(tonic, deg, q.octaveUp[i]));
-      return isSingKind(q.kind) ? shiftIntoRange(midis, vocalRange) : midis;
+      if (!isSingKind(q.kind)) return midis;
+      const shifted = shiftIntoRange(midis, vocalRange);
+      return easing ? shifted.map((m) => m - 12) : shifted;
     },
-    [vocalRange],
+    [vocalRange, easing],
   );
 
-  /** Where a sung target actually sounds, for the reference and the meter. */
+  /**
+   * Where a sung target actually sounds, for the reference and the meter.
+   * `easing` drops it an octave after repeated misses high in the range.
+   */
   const singTargetMidi = useCallback(
     (q: Question, tonic: number) => {
       const base = degreeToMidi(tonic, q.target ?? 0);
-      return base + octaveShiftFor(base, vocalRange);
+      return base + octaveShiftFor(base, vocalRange) - (easing ? 12 : 0);
     },
-    [vocalRange],
+    [vocalRange, easing],
   );
 
   const playQuestion = useCallback(
@@ -356,9 +375,26 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     [introOverride, plan, playQuestion, rollKey, weightsFor],
   );
 
+  /**
+   * Never sing cold (docs/01-PEDAGOGY.md §4.4). A round with any sung step in
+   * it is sent through the warm-up first, and comes straight back here after.
+   * Warmth lasts half an hour, so this is once a session rather than once a
+   * round — see the note in core/voiceHealth.ts about that departure.
+   */
+  const needsWarmUp =
+    plan.some((s) => {
+      const c = getCourse(s.courseId) ?? COURSES[0];
+      return isSingKind(findLevel(c.levels, s.levelId).kind);
+    }) && !isWarm(lastWarmUpAt);
+
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
+    if (needsWarmUp) {
+      const back = warmup ? '/warmup' : `/practice/${params.courseId ?? 'find-the-note'}`;
+      navigate(`/voice/warmup?then=${encodeURIComponent(back)}`, { replace: true });
+      return;
+    }
     started.current = true;
     void unlockAudio().then(() => askQuestion(0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -464,6 +500,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   function handleSing(outcome: SingOutcome) {
     if (!question || answered.current) return;
     answered.current = true;
+    sangSomething.current = true;
     const tonic = keyRef.current.tonic;
     const targetMidi = singTargetMidi(question, tonic);
 
@@ -479,6 +516,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     const hit = outcome === 'hit';
     recordAnswer(step.courseId, step.levelId, hit, creditItems(question));
     tally(step, hit);
+    noteSungAttempt(targetMidi, hit);
 
     if (hit) {
       const next = streak + 1;
@@ -508,6 +546,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   function handlePhrase(outcome: PhraseOutcome) {
     if (!question || answered.current) return;
     answered.current = true;
+    sangSomething.current = true;
     const tonic = keyRef.current.tonic;
 
     if (outcome.kind === 'skipped') {
@@ -522,6 +561,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
       .filter(({ slot }) => slot.state !== 'hit')
       .map(({ deg }) => deg);
     const allHit = missed.length === 0;
+    for (const slot of outcome.slots) noteSungAttempt(slot.target, slot.state === 'hit');
 
     recordAnswer(step.courseId, step.levelId, allHit, allHit ? question.sequence : missed);
     tally(step, allHit);
@@ -607,6 +647,16 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     later(advance, 4200);
   }
 
+  /**
+   * Log one sung note and back off if the top of the range keeps failing.
+   * Once eased it stays eased for the rest of the round — flipping back and
+   * forth mid-round would be worse than either setting.
+   */
+  function noteSungAttempt(midi: number, hit: boolean) {
+    sungAttempts.current = [...sungAttempts.current, { midi, hit }].slice(-12);
+    if (!easing && shouldEase(sungAttempts.current, vocalRange)) setEasing(true);
+  }
+
   function replayReference() {
     if (!question) return;
     const tonic = keyRef.current.tonic;
@@ -637,6 +687,9 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         .sort((a, b) => b[1] - a[1])
         .map(([item]) => item);
       stopDrone();
+      if (sangSomething.current) {
+        addSungTime(performance.now() - roundStartedAt.current);
+      }
 
       // Retention is updated once per level, on the level's own accuracy in
       // this round — not on the round as a whole, which for a warm-up would
@@ -662,6 +715,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         bestStreak: score.current.bestStreak,
         weakDegrees,
         mix: warmup ? planBreakdown(plan) : undefined,
+        sang: sangSomething.current,
       });
       playSessionEnd(keyRef.current.tonic, config.mode);
       navigate('/summary', { replace: true });
@@ -746,6 +800,11 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         {config.drone && (
           <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
             Drone on
+          </span>
+        )}
+        {easing && (
+          <span className="label rounded-full border border-cool/40 px-3 py-1.5 text-cool">
+            Dropped an octave
           </span>
         )}
         {config.kind === 'interval-id' && (

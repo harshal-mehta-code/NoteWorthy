@@ -77,6 +77,19 @@ Sing back two notes, then three, then four- and five-note scale runs, then runs 
 
 The hard part is **segmentation**: deciding where one note ends and the next begins in a continuous pitch stream. People sing legato, so silence can't be the only boundary — and a fixed tolerance band can't do it either, because it has to be wide enough for vibrato, and vibrato is wider than the semitone step it would then swallow. Sustained deviation separates them: vibrato swings past the threshold and comes straight back, a real step goes and stays. Slots fill with what you actually sang, right or wrong, so you're never stuck part way through a phrase.
 
+### 🎤 Vocal health
+`docs/01-PEDAGOGY.md` calls this **non-negotiable**, and it is the only part of the plan where getting it wrong can hurt someone rather than just teach them badly. Four rules, all implemented:
+
+**Never sing cold.** Any round containing a sung question routes through a guided warm-up first — humming, lip trills, sirens, five-note patterns, each pitched to *your* measured range and none of them opening at an extreme. A cool-down (descending, quiet) is offered at the end of any round you sang in.
+
+**Nudges at 15, 25 and 40 minutes** of singing, counted per day. They appear on the summary rather than mid-round, because interrupting someone between two questions is the worst possible moment. At 40 minutes it says to stop — as advice. Locking someone out of their own practice would be a dark pattern wearing a lab coat, and the app cannot actually tell a tired voice from a fresh one.
+
+**Backing off under strain.** Repeated misses at the top of your range are the one strain-adjacent signal the app can genuinely observe, and it drops the octave rather than pushing. It can't distinguish "straining" from "hasn't learned that note" — but the right response to both is the same, which is what makes acting on it safe rather than presumptuous.
+
+**Saying what it is.** "This is training, not diagnosis" appears wherever singing starts. An app that grades your voice is very easily mistaken for one that can tell you something about your health, and it cannot.
+
+One deliberate departure: the spec says the warm-up is non-skippable. Taken literally that puts a two-minute routine in front of every sixty-second round, which breaks the promise that a round is quick and trains people to dread opening the app — the surest way to make them stop warming up at all. So warmth **lasts**: warm up once and you're warm for half an hour.
+
 ### 🎤 Your range
 Sing your lowest comfortable note and your highest, once. After that every sung prompt plays in your octave instead of around middle C, so a low voice never has to transpose the question before answering it. Grading was always on the note rather than the octave, so nothing about what counts as right changes. Reported as a span in plain words — never a voice type, which two measured notes cannot support anyway.
 

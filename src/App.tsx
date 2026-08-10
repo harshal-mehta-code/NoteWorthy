@@ -12,6 +12,7 @@ import Summary from '@/screens/Summary';
 import You from '@/screens/You';
 import Settings from '@/screens/Settings';
 import VocalRange from '@/screens/VocalRange';
+import VoiceRoutine from '@/screens/VoiceRoutine';
 
 /** Applies the theme choice, and keeps the browser chrome colour in step. */
 function useTheme() {
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/summary" element={<Summary />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/voice/range" element={<VocalRange />} />
+          <Route path="/voice/:kind" element={<VoiceRoutine />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
