@@ -15,6 +15,7 @@
 
 import type { DegreeStat, LevelStats, SessionResult } from '@/store/useStore';
 import type { VocalRange } from './range';
+import type { Memory } from './retention';
 
 export const BACKUP_FORMAT = 1;
 
@@ -31,6 +32,7 @@ export type BackupPayload = {
   vocalRange: VocalRange | null;
   tapOffsetMs: number | null;
   stats: Record<string, LevelStats>;
+  memories: Record<string, Memory>;
   degreeStats: Record<string, Record<number, DegreeStat>>;
   streakDays: number;
   lastPracticeDay: string | null;
@@ -113,6 +115,7 @@ export function parseBackup(text: string): RestoreResult {
     vocalRange: cleanRange(p.vocalRange),
     tapOffsetMs: cleanOffset(p.tapOffsetMs),
     stats,
+    memories: cleanMemories(p.memories),
     degreeStats: cleanDegreeStats(p.degreeStats),
     streakDays: count(p.streakDays),
     lastPracticeDay: typeof p.lastPracticeDay === 'string' ? p.lastPracticeDay : null,
@@ -198,6 +201,33 @@ function cleanDegreeStats(value: unknown): Record<string, Record<number, DegreeS
       };
     }
     out[key] = cleaned;
+  }
+  return out;
+}
+
+/**
+ * Memories carry a timestamp, and a bad one is worse than none: a lastAt in
+ * the future makes something look permanently fresh, and one at zero makes
+ * a course look decades stale. Both are dropped.
+ */
+function cleanMemories(value: unknown): Record<string, Memory> {
+  if (!isRecord(value)) return {};
+  const out: Record<string, Memory> = {};
+  const now = Date.now();
+  for (const [key, entry] of Object.entries(value)) {
+    if (!isRecord(entry)) continue;
+    const { lastAt, stability, difficulty, reviews } = entry;
+    if (typeof lastAt !== 'number' || !Number.isFinite(lastAt)) continue;
+    if (typeof stability !== 'number' || !Number.isFinite(stability) || stability <= 0) continue;
+    out[key] = {
+      lastAt: Math.min(now, Math.max(0, lastAt)),
+      stability: Math.min(365, Math.max(0.2, stability)),
+      difficulty:
+        typeof difficulty === 'number' && Number.isFinite(difficulty)
+          ? Math.min(10, Math.max(1, difficulty))
+          : 5,
+      reviews: count(reviews),
+    };
   }
   return out;
 }

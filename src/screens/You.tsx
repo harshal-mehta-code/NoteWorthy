@@ -8,6 +8,9 @@ import {
   type Pillar,
 } from '@/core/courses';
 import { LESSONS } from '@/content/lessons';
+import { MusicianshipMap } from '@/components/MusicianshipMap';
+import { buildMap, courseProgress, mostFaded } from '@/core/mapLayout';
+import { retentionLabel } from '@/core/retention';
 import {
   courseAnswers,
   levelFor,
@@ -19,18 +22,23 @@ import {
 /**
  * Where you stand, in one screen.
  *
- * Not the Musicianship Map from the vision doc — that needs a lot more
- * material to be worth drawing. This is the honest version: how much of each
- * pillar you've touched, and how it's going.
+ * The map leads, because it is the only view that shows **retention** rather
+ * than accuracy — what you would still have if you sat down now, as opposed
+ * to how a round went while you were in it. The pillar bars underneath are
+ * the flat version of the same thing, kept because a constellation is bad at
+ * answering "how much have I actually done".
  */
 export default function You() {
   const navigate = useNavigate();
   const progress = useStore((s) => s.progress);
   const stats = useStore((s) => s.stats);
   const lessonsDone = useStore((s) => s.lessonsDone);
+  const memories = useStore((s) => s.memories);
   const streakDays = useStore((s) => s.streakDays);
   const totalSessions = useStore((s) => s.totalSessions);
   const totalAnswers = useStore((s) => s.totalAnswers);
+
+  const faded = mostFaded(buildMap(progress, memories, lessonsDone.length));
 
   return (
     <Screen className="pad-top">
@@ -45,6 +53,34 @@ export default function You() {
       </header>
 
       <div className="space-y-6 py-6">
+        <div>
+          <Label className="mb-3">Your map</Label>
+          <MusicianshipMap
+            progress={progress}
+            memories={memories}
+            lessonsDone={lessonsDone.length}
+            onPick={(node) => {
+              if (node.course.status !== 'ready') return;
+              if (node.course.id === 'theory') {
+                const next = LESSONS.find((l) => !lessonsDone.includes(l.id)) ?? LESSONS[0];
+                navigate(`/learn/${next.id}`);
+                return;
+              }
+              navigate(`/practice/${node.course.id}`);
+            }}
+          />
+          {faded && (
+            <Card tone="cool" className="mt-4">
+              <Label className="text-cool">Worth a round</Label>
+              <p className="mt-2.5 text-[15px] leading-relaxed">
+                {faded.course.name} is {retentionLabel(faded.retention!)}. Coming back to something
+                right as it starts to slip is worth several rounds of something you already know —
+                that is the whole reason this screen shows fading rather than totals.
+              </p>
+            </Card>
+          )}
+        </div>
+
         <Card>
           <div className="flex">
             <Stat value={String(streakDays)} label="day streak" />
@@ -115,11 +151,9 @@ function PillarRow({
 
   // Progress through a pillar is how far up its ladders you are — a level
   // reached is worth more than an answer given, since answers say nothing
-  // about difficulty.
-  const reached = courses.reduce((sum, c) => {
-    if (c.lessons) return sum + done / c.lessons;
-    return sum + (levelFor(progress, c.id) - 1) / Math.max(1, c.levels.length - 1);
-  }, 0);
+  // about difficulty. Shared with the map, so the bar and the node can never
+  // disagree about how far along something is.
+  const reached = courses.reduce((sum, c) => sum + courseProgress(c, progress, done), 0);
   const share = courses.length ? Math.min(1, reached / courses.length) : 0;
 
   const best = courses
@@ -131,7 +165,13 @@ function PillarRow({
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[15px] font-semibold">{PILLAR_LABEL[pillar]}</span>
         <span className="tnum shrink-0 font-mono text-[11px] text-subtle">
-          {answers === 0 && done === 0 ? 'not started' : `${answers} answered`}
+          {/* A lessons-only pillar has no answers to count, and reporting
+              "0 answered" next to five lessons read reads as nothing done. */}
+          {answers === 0 && done === 0
+            ? 'not started'
+            : answers === 0
+              ? `${done} ${done === 1 ? 'lesson' : 'lessons'} read`
+              : `${answers} answered`}
         </span>
       </div>
 

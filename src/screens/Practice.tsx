@@ -64,6 +64,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const tapOffsetMs = useStore((s) => s.tapOffsetMs);
   const learnTapOffset = useStore((s) => s.learnTapOffset);
   const recordAnswer = useStore((s) => s.recordAnswer);
+  const recordRetention = useStore((s) => s.recordRetention);
   const finishSession = useStore((s) => s.finishSession);
 
   /**
@@ -127,6 +128,14 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const [rhythmGrade, setRhythmGrade] = useState<RhythmGrade | null>(null);
 
   const score = useRef({ correct: 0, skipped: 0, bestStreak: 0, misses: new Map<number, number>() });
+  /**
+   * Per course+level tallies, so retention can be updated once per level at
+   * the end. A warm-up spans several, and one round of a level is the right
+   * grain: grading each answer separately would swing stability on noise.
+   */
+  const perStep = useRef(new Map<string, { right: number; total: number; ms: number[] }>());
+  /** When the current question became answerable. */
+  const readyAt = useRef<number | null>(null);
   const timers = useRef<number[]>([]);
   const prevItem = useRef<number | null>(null);
   const answered = useRef(false);
@@ -149,6 +158,25 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     },
     [allDegreeStats],
   );
+
+  /**
+   * Log one answer against its course+level, with how long it took.
+   *
+   * Response time is only recorded for the *first* answer of a multi-slot
+   * question — the second and third slots measure how fast you can tap, not
+   * how fast you knew.
+   */
+  const tally = (s: PlanStep, right: boolean) => {
+    const key = statKey(s.courseId, s.levelId);
+    const entry = perStep.current.get(key) ?? { right: 0, total: 0, ms: [] as number[] };
+    entry.right += right ? 1 : 0;
+    entry.total += 1;
+    if (readyAt.current !== null) {
+      entry.ms.push(performance.now() - readyAt.current);
+      readyAt.current = null;
+    }
+    perStep.current.set(key, entry);
+  };
 
   const clearTimers = () => {
     timers.current.forEach(clearTimeout);
@@ -287,7 +315,15 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
 
       const startPlaying = () => {
         setPhase('playing');
-        playQuestion(q, tonic.tonic, () => setPhase('question'), cfg.phraseGap ?? SEQUENCE_GAP);
+        playQuestion(
+          q,
+          tonic.tonic,
+          () => {
+            readyAt.current = performance.now();
+            setPhase('question');
+          },
+          cfg.phraseGap ?? SEQUENCE_GAP,
+        );
       };
 
       if (cfg.drone) {
@@ -337,6 +373,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     const tonic = keyRef.current.tonic;
     const correct = answer.every((id, i) => id === q.correctIds[i]);
     recordAnswer(step.courseId, step.levelId, correct, correct ? creditItems(q) : blamedDegrees(q, answer));
+    tally(step, correct);
 
     const heard = midisFor(q, tonic);
     const homeMidi = degreeToMidi(tonic, 0);
@@ -438,6 +475,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
 
     const hit = outcome === 'hit';
     recordAnswer(step.courseId, step.levelId, hit, creditItems(question));
+    tally(step, hit);
 
     if (hit) {
       const next = streak + 1;
@@ -483,6 +521,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
     const allHit = missed.length === 0;
 
     recordAnswer(step.courseId, step.levelId, allHit, allHit ? question.sequence : missed);
+    tally(step, allHit);
     setPhraseSlots(outcome.slots);
 
     if (allHit) {
@@ -542,6 +581,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
 
     const clean = grade.accuracy === 1 && grade.extraTaps === 0;
     recordAnswer(step.courseId, step.levelId, clean, clean ? allValues : missedValues);
+    tally(step, clean);
 
     if (clean) {
       const next = streak + 1;
@@ -594,6 +634,18 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
         .sort((a, b) => b[1] - a[1])
         .map(([item]) => item);
       stopDrone();
+
+      // Retention is updated once per level, on the level's own accuracy in
+      // this round — not on the round as a whole, which for a warm-up would
+      // smear five different skills into one number.
+      for (const [key, entry] of perStep.current) {
+        if (entry.total === 0) continue;
+        const [courseId, levelId] = key.split(':');
+        const median = entry.ms.length
+          ? [...entry.ms].sort((a, b) => a - b)[entry.ms.length >> 1]
+          : null;
+        recordRetention(courseId, Number(levelId), entry.right / entry.total, median);
+      }
       finishSession({
         // A warm-up spans courses, so it gets its own id; the individual
         // answers were already credited to their real courses above.

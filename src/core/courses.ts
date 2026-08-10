@@ -61,11 +61,18 @@ export type Course = {
   lessons?: number;
   /** Shown on the card when planned, so "coming" isn't a dead end. */
   planNote?: string;
+  /**
+   * Courses that lead into this one. Not gates — nothing is locked, and
+   * locking would be a dark pattern in an app with no paid tier to unlock.
+   * These are the edges of the map, and they say what order actually works.
+   */
+  after?: CourseId[];
 };
 
 export const COURSES: Course[] = [
   {
     id: 'find-the-note',
+    after: ['theory'],
     pillar: 'ear',
     name: 'Find the Note',
     blurb: 'Hear a note and place it inside the key. The backbone of playing by ear.',
@@ -74,6 +81,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'intervals',
+    after: ['find-the-note'],
     pillar: 'ear',
     name: 'Intervals',
     blurb: 'Name the distance between two notes, up, down, or together.',
@@ -82,6 +90,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'chord-quality',
+    after: ['intervals'],
     pillar: 'ear',
     name: 'Chords',
     blurb: 'Major or minor, then sevenths and inversions.',
@@ -90,6 +99,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'progressions',
+    after: ['chord-quality'],
     pillar: 'ear',
     name: 'Progressions',
     blurb: 'Name chords by their role in the key. This is what lets you work out a song.',
@@ -115,6 +125,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'sing-phrases',
+    after: ['find-the-note'],
     pillar: 'voice',
     name: 'Sing a Phrase',
     blurb: 'Sing back two notes, then three, then whole runs. Agility, by voice.',
@@ -123,6 +134,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'melodic-dictation',
+    after: ['find-the-note'],
     pillar: 'ear',
     name: 'Melodies',
     blurb: 'Hear a phrase and write it down, note by note.',
@@ -132,6 +144,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'rhythm-reading',
+    after: ['note-reading'],
     pillar: 'reading',
     name: 'Read the Rhythm',
     blurb: 'Tap what you read, in time. Quarter notes to sixteenths, with and without a click.',
@@ -140,6 +153,7 @@ export const COURSES: Course[] = [
   },
   {
     id: 'scroll-reading',
+    after: ['note-reading', 'rhythm-reading'],
     pillar: 'reading',
     name: 'Scroll Reading',
     blurb: 'A line of music passes a playhead. It never stops, and never repeats.',

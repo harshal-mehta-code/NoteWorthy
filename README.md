@@ -28,7 +28,7 @@ npm run dev
 - **Key of the Week** — every pillar tunes to one tonal center, rotating the circle of fifths.
 - **Musical feedback** — the reward sounds are diatonic and in the current key, so the gamification layer is itself ear training.
 - **Comparative error playback** — hear what you picked vs what it was, back to back, in context.
-- **The Musicianship Map** — a skill constellation across all four pillars, where nodes visibly dim as your retention decays.
+- **The Musicianship Map** — a skill constellation across all four pillars, where nodes visibly dim as your retention decays. Built.
 - **Auto-transposition to your voice** — range mapped once, every singable exercise fits you afterward.
 - **No dark patterns** — no ads, no energy meters, no streak guilt, nothing locked.
 
@@ -75,6 +75,13 @@ The hard part is **segmentation**: deciding where one note ends and the next beg
 
 ### 🎤 Your range
 Sing your lowest comfortable note and your highest, once. After that every sung prompt plays in your octave instead of around middle C, so a low voice never has to transpose the question before answering it. Grading was always on the note rather than the octave, so nothing about what counts as right changes. Reported as a span in plain words — never a voice type, which two measured notes cannot support anyway.
+
+### 🗺 The Musicianship Map
+Every course as a node, wired by what leads into what, on the You screen. Node size shows how far up a ladder you are; **brightness shows how much of it you still have**, so a course you ground through in March and never touched again visibly fades. That needs a real forgetting curve to be honest, so there is one: retrievability follows the power function FSRS settled on, `R(t) = (1 + 19/81 · t/S)^-0.5`, where stability `S` is by definition the interval at which recall falls to 90%.
+
+The stability update is deliberately *not* full FSRS — that fits seventeen weights against a review history this app doesn't have. It's a simple model with the same shape: successful recall multiplies stability, the multiplier grows the more overdue the item was (the spacing effect), and difficulty and **response time** scale it. Response time matters because accuracy alone can't tell knowing something from working it out, and the second decays much faster. It's measured against a par time per question type, since six seconds is fluent for a four-chord progression and laboured for naming one note.
+
+Three node states, because they mean three different things: never touched is an outline, started-but-unmeasurable (lessons don't decay in any way the app can honestly measure) sits at a fixed middle, and everything drilled is lit by what survives.
 
 ### 🔁 The Daily Warm-Up
 Ten questions assembled fresh from every course you've started, weighted toward the ones you're weakest at, with roughly a third reaching back below your current level. It exists because practising a course always serves its current level, so everything under it quietly rots — and because **interleaving** beats grinding one drill at a time for retention, even though it reliably feels worse while you're doing it. No single course can take more than 60% of the round, so the same drill never lands three times running.

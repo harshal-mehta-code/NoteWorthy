@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { PROMOTE_ACCURACY, PROMOTE_MIN_ITEMS, type IntroMode } from '@/core/levels';
+import { PROMOTE_ACCURACY, PROMOTE_MIN_ITEMS, parMsFor, type IntroMode } from '@/core/levels';
+import { review, type Memory } from '@/core/retention';
 import { getCourse, statKey } from '@/core/courses';
 import type { Deg } from '@/core/music';
 import type { VocalRange } from '@/core/range';
@@ -61,6 +62,12 @@ type State = {
 
   /** Keyed `courseId:levelId`. */
   stats: Record<string, LevelStats>;
+  /**
+   * What is still retained, keyed `courseId:levelId`. Accuracy describes how
+   * a round went; this describes what survived the week afterwards, which is
+   * the thing people actually want to know.
+   */
+  memories: Record<string, Memory>;
   degreeStats: Record<string, Record<number, DegreeStat>>;
   streakDays: number;
   lastPracticeDay: string | null;
@@ -80,6 +87,12 @@ type State = {
   setTheme: (t: ThemeChoice) => void;
   setVocalRange: (r: VocalRange | null) => void;
   learnTapOffset: (measuredMs: number | null) => void;
+  recordRetention: (
+    courseId: string,
+    levelId: number,
+    accuracy: number,
+    responseMs: number | null,
+  ) => void;
   restore: (payload: BackupPayload) => void;
   resetProgress: () => void;
 };
@@ -109,6 +122,7 @@ const INITIAL = {
   vocalRange: null as VocalRange | null,
   tapOffsetMs: null as number | null,
   stats: {} as Record<string, LevelStats>,
+  memories: {} as Record<string, Memory>,
   degreeStats: {} as Record<string, Record<number, DegreeStat>>,
   streakDays: 0,
   lastPracticeDay: null,
@@ -204,6 +218,27 @@ export const useStore = create<State>()(
 
       learnTapOffset: (measuredMs) =>
         set((s) => ({ tapOffsetMs: blendOffset(s.tapOffsetMs, measuredMs) })),
+
+      /**
+       * Fold a round's result into what is retained. Called per course+level
+       * rather than per answer: these drills ask several questions of the same
+       * thing, and grading each separately would swing stability on noise.
+       */
+      recordRetention: (courseId, levelId, accuracy, responseMs) =>
+        set((s) => {
+          const key = statKey(courseId, levelId);
+          const level = getCourse(courseId)?.levels.find((l) => l.id === levelId);
+          return {
+            memories: {
+              ...s.memories,
+              [key]: review(s.memories[key], accuracy, {
+                correct: accuracy >= 0.75,
+                responseMs,
+                parMs: (level && parMsFor(level.kind)) ?? undefined,
+              }),
+            },
+          };
+        }),
 
       /**
        * Replace everything with a validated backup. A restore is a *replace*,

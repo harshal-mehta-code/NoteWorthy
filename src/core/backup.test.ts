@@ -13,6 +13,9 @@ const FULL: BackupPayload = {
   vocalRange: { low: 45, high: 69 },
   tapOffsetMs: 85,
   stats: { 'find-the-note:6': { recent: [true, false, true], correct: 12, total: 15 } },
+  memories: {
+    'find-the-note:6': { lastAt: 1_770_000_000_000, stability: 12, difficulty: 4, reviews: 6 },
+  },
   degreeStats: { 'find-the-note:6': { 7: { right: 8, wrong: 2, recent: [true, true] } } },
   streakDays: 5,
   lastPracticeDay: '2026-08-09',
@@ -105,6 +108,37 @@ describe('cleaning a damaged or hostile payload', () => {
     expect(r.payload.lastCourse).toBe('find-the-note');
     expect(r.payload.vocalRange).toBeNull();
     expect(r.payload.tapOffsetMs).toBeNull();
+    expect(r.payload.memories).toEqual({});
+  });
+
+  it('drops a memory with no usable timestamp or stability', () => {
+    const r = parse({
+      memories: {
+        'a:1': { lastAt: 'yesterday', stability: 5, difficulty: 5, reviews: 1 },
+        'b:1': { lastAt: 1_770_000_000_000, stability: 0, difficulty: 5, reviews: 1 },
+        'c:1': { lastAt: 1_770_000_000_000, stability: 5, difficulty: 5, reviews: 1 },
+      },
+    });
+    expect(r.ok && Object.keys(r.payload.memories)).toEqual(['c:1']);
+  });
+
+  it('never restores a memory stamped in the future, which would never fade', () => {
+    const r = parse({
+      memories: { 'a:1': { lastAt: Date.now() + 5e10, stability: 5, difficulty: 5, reviews: 1 } },
+    });
+    expect(r.ok && r.payload.memories['a:1'].lastAt).toBeLessThanOrEqual(Date.now());
+  });
+
+  it('clamps a restored stability and difficulty into range', () => {
+    const r = parse({
+      memories: { 'a:1': { lastAt: 1_770_000_000_000, stability: 9e9, difficulty: 99, reviews: -3 } },
+    });
+    expect(r.ok && r.payload.memories['a:1']).toEqual({
+      lastAt: 1_770_000_000_000,
+      stability: 365,
+      difficulty: 10,
+      reviews: 0,
+    });
   });
 
   it('clamps a stored tap lag to something a device could plausibly have', () => {

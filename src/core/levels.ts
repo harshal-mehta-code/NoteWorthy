@@ -63,6 +63,36 @@ export function isPhraseKind(kind: LevelKind): boolean {
 }
 
 /**
+ * Roughly how long a fluent answer takes, per kind of question.
+ *
+ * Response time only means something against a baseline: six seconds is quick
+ * for a four-chord progression and laboured for naming one note. Null where
+ * the clock is measuring performance rather than recall — a sung phrase takes
+ * as long as it takes to sing, and a tapped bar takes exactly one bar.
+ */
+export function parMsFor(kind: LevelKind): number | null {
+  switch (kind) {
+    case 'home-or-not':
+    case 'rest-or-move':
+      return 2500;
+    case 'which-is-home':
+    case 'read-note':
+      return 3000;
+    case 'name-the-note':
+      return 3500;
+    case 'interval-id':
+    case 'chord-quality':
+      return 4000;
+    case 'chord-inversion':
+      return 4500;
+    case 'progression-id':
+      return 6500;
+    default:
+      return null;
+  }
+}
+
+/**
  * Whether a question sits inside a key, and so needs an intro to establish
  * one. Intervals and chords are distances and colours wherever you put them,
  * reading is about the page, and rhythm has no pitch at all.

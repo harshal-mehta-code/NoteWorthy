@@ -200,6 +200,7 @@ function Backup() {
       vocalRange: store.vocalRange,
       tapOffsetMs: store.tapOffsetMs,
       stats: store.stats,
+      memories: store.memories,
       degreeStats: store.degreeStats,
       streakDays: store.streakDays,
       lastPracticeDay: store.lastPracticeDay,
