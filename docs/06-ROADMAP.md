@@ -303,7 +303,7 @@ Full keyboard operation for every drill, screen-reader announcements, color-blin
 
 **And since that** — Read the Rhythm (nine levels, tapped, with latency cancelled by measurement rather than a calibration wizard).
 
-**And since that** — response time as a second signal, a forgetting-curve retention model, the Musicianship Map, and warm-up scheduling driven by that model rather than by accuracy alone.
+**And since that** — response time as a second signal, a forgetting-curve retention model, the Musicianship Map, warm-up scheduling driven by that model, and five more theory lessons closing the gap where the reading and rhythm courses drilled notation no lesson explained (plus the linkage rule's missing direction, and a browsable lesson index).
 
 **Next, in order** — each is a self-contained increment small enough to review in one sitting:
 

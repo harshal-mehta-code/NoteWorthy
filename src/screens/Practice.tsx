@@ -24,6 +24,7 @@ import {
   slotCount,
   type Question,
 } from '@/core/question';
+import { conceptFor, getLesson } from '@/content/lessons';
 import { degreeWeights, levelFor, useStore } from '@/store/useStore';
 import { statKey } from '@/core/courses';
 import {
@@ -96,6 +97,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const phrase = isPhraseKind(config.kind);
   const reading = config.kind === 'read-note';
   const tapping = config.kind === 'tap-rhythm';
+  const concept = getLesson(conceptFor(config.kind, config.id) ?? '');
 
   const rollKey = useCallback(
     (): KeyChoice =>
@@ -1013,6 +1015,26 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
             </>
           )}
         </p>
+
+        {/* The other half of the linkage rule: a drill points back at the
+            lesson behind it, so being stuck is one tap from the explanation
+            rather than a trip out through the theory course. */}
+        {concept && (
+          <button
+            onClick={() => navigate(`/learn/${concept.id}`)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left transition hover:border-line-strong hover:bg-surface-2"
+          >
+            <span>
+              <span className="block text-[14px] font-semibold text-ink">{concept.title}</span>
+              <span className="block text-[12.5px] text-subtle">
+                The lesson behind this drill · {concept.minutes} min
+              </span>
+            </span>
+            <span className="shrink-0 text-subtle" aria-hidden="true">
+              →
+            </span>
+          </button>
+        )}
       </Sheet>
     </Screen>
   );

@@ -7,6 +7,7 @@ import Home from '@/screens/Home';
 import PracticeLibrary from '@/screens/PracticeLibrary';
 import Practice from '@/screens/Practice';
 import Lesson from '@/screens/Lesson';
+import LessonIndex from '@/screens/LessonIndex';
 import Summary from '@/screens/Summary';
 import You from '@/screens/You';
 import Settings from '@/screens/Settings';
@@ -80,6 +81,7 @@ export default function App() {
         >
           <Route path="/warmup" element={<Practice warmup />} />
           <Route path="/practice/:courseId" element={<Practice />} />
+          <Route path="/learn" element={<LessonIndex />} />
           <Route path="/learn/:lessonId" element={<Lesson />} />
           <Route path="/summary" element={<Summary />} />
           <Route path="/settings" element={<Settings />} />

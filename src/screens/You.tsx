@@ -62,8 +62,7 @@ export default function You() {
             onPick={(node) => {
               if (node.course.status !== 'ready') return;
               if (node.course.id === 'theory') {
-                const next = LESSONS.find((l) => !lessonsDone.includes(l.id)) ?? LESSONS[0];
-                navigate(`/learn/${next.id}`);
+                navigate('/learn');
                 return;
               }
               navigate(`/practice/${node.course.id}`);

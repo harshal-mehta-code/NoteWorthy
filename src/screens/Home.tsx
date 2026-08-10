@@ -33,7 +33,7 @@ export default function Home() {
 
   async function start() {
     if (course.id === 'theory') {
-      navigate(`/learn/${(nextLesson ?? LESSONS[0]).id}`);
+      navigate('/learn');
       return;
     }
     await unlockAudio();
@@ -130,7 +130,7 @@ export default function Home() {
               key={c.id}
               onClick={async () => {
                 if (c.id === 'theory') {
-                  navigate(`/learn/${(nextLesson ?? LESSONS[0]).id}`);
+                  navigate('/learn');
                   return;
                 }
                 await unlockAudio();

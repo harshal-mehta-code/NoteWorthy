@@ -19,7 +19,7 @@ npm run dev
 |---|---|
 | 🎧 **Ear training** | **Find the Note** (17 levels), **Chords** (7), **Progressions** (7) and **Intervals** (8). Still to come: melodic dictation. |
 | 👁 **Sight reading** *(started)* | **Read the Note** (7 levels) by landmark, both clefs and ledger lines, and **Read the Rhythm** (9 levels) tapped in time. Still to come: scrolling reads that never stop. |
-| 🧠 **Music theory** *(started)* | Nine interactive lessons with a playable keyboard and a circle of fifths you can hear. More of the curriculum to follow. |
+| 🧠 **Music theory** *(started)* | Fourteen interactive lessons — a playable keyboard, a stave, written rhythm, and a circle of fifths you can hear — browsable as a reference, and linked both ways with the drills. More of the curriculum to follow. |
 | 🎤 **Vocal training** *(started)* | **Sing a Phrase** (8 levels) plus sung answers inside Find the Note, live pitch feedback, and range mapping that fits every prompt to your voice. Still to come: sight-singing with your pitch traced over the staff. |
 
 ## What makes it different
@@ -60,8 +60,12 @@ Name chords by their **role in the key**, not their quality. Knowing a chord is 
 ### 👁 Read the Note — seven levels
 Name notes on the stave, built on **landmarks** rather than "Every Good Boy Deserves Fudge" — mnemonics force you to count up one line at a time, a habit you then have to unlearn. Treble, then ledger lines, then bass, then both clefs unannounced. Answer with the letter keys.
 
-### 🧠 Foundations — nine lessons
-Short interactive lessons with a keyboard you can play: how the keyboard is laid out, half and whole steps, what makes a scale major, why one note feels like home, what an interval actually is, how triads are built, why chords get numbers instead of names, what changes in a minor key, and the circle of fifths — as a ring you tap to hear rather than a diagram to memorise. Every lesson ends by pointing at the drill where the same idea turns up; that linkage is what stops theory becoming trivia.
+### 🧠 Foundations — fourteen lessons
+Short interactive lessons, each with something you can play: the keyboard, half and whole steps, what makes a scale major, why one note feels like home, **the stave and its clefs**, **note values and rests**, **time signatures**, what an interval actually is, how triads are built, **sevenths and why one of them pulls**, why chords get numbers instead of names, **cadences**, what changes in a minor key, and the circle of fifths — as a ring you tap to hear rather than a diagram to memorise.
+
+The reading and rhythm courses had been drilling the stave and note values for a while with **no lesson anywhere explaining either** — the same "curriculum behind the drills" gap that roman numerals had. The new lessons reuse the app's own notation components, so a half note in a lesson is drawn by exactly the code that draws it in a drill.
+
+**The linkage rule runs both ways now.** Every lesson ends by pointing at the drill that uses it, and every drill's "What's this?" points back at the lesson behind it — chosen by what the level actually asks, so Chords sends you to triads early and sevenths later. Lessons are also browsable as a reference rather than a queue: you can go back and check what a half note was without reading everything after it.
 
 ### 👁 Read the Rhythm — nine levels
 Tap what you read. Quarter notes, then held notes, rests, eighths, two bars, sixteenths, and finally everything at once with the click dropping out after the count-in — which is the real step, because playing against a click that has stopped is what tests whether you are *keeping* time or just following it.

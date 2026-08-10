@@ -3,6 +3,10 @@ import { Navigate, useNavigate, useParams } from 'react-router';
 import { Button, Card, IconButton, Label, Screen } from '@/components/ui';
 import { Keyboard } from '@/components/Keyboard';
 import { CircleOfFifths } from '@/components/CircleOfFifths';
+import { Staff } from '@/components/Staff';
+import { RhythmStaff } from '@/components/RhythmStaff';
+import { indexToMidi } from '@/core/reading';
+import type { RhythmPattern } from '@/core/rhythm';
 import { tonicTriad } from '@/core/music';
 import { LESSONS, getLesson, type Card as LessonCard } from '@/content/lessons';
 import { useStore } from '@/store/useStore';
@@ -34,12 +38,24 @@ export default function Lesson() {
   // Play a card's example as it arrives, so the sound leads the reading.
   useEffect(() => {
     const card = lesson?.cards[step];
-    if (!card || card.kind !== 'keys' || !card.play) return;
-    const t = window.setTimeout(() => {
-      void unlockAudio().then(() =>
-        playSequence(card.play!, card.together ? 0 : 0.42, card.together ? 1.4 : 0.7, 0.24),
-      );
-    }, 380);
+    if (!card) return;
+
+    const sound = () => {
+      if (card.kind === 'keys' && card.play) {
+        playSequence(card.play, card.together ? 0 : 0.42, card.together ? 1.4 : 0.7, 0.24);
+      } else if (card.kind === 'staff' && card.play) {
+        playSequence([indexToMidi(card.index)], 0, 1.1, 0.26);
+      } else if (card.kind === 'rhythm') {
+        playRhythm(card.beats, card.bpm ?? 84);
+      }
+    };
+    const plays =
+      (card.kind === 'keys' && card.play) ||
+      (card.kind === 'staff' && card.play) ||
+      card.kind === 'rhythm';
+    if (!plays) return;
+
+    const t = window.setTimeout(() => void unlockAudio().then(sound), 380);
     timers.current.push(t);
     return () => clearTimeout(t);
   }, [lesson, step]);
@@ -151,6 +167,50 @@ function CardBody({
     );
   }
 
+  if (card.kind === 'staff') {
+    return (
+      <div className="space-y-4">
+        <p className="text-[16px] leading-relaxed text-muted">{rich(card.body)}</p>
+        <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-2 py-3">
+          <Staff index={card.index} clef={card.clef} />
+          {card.caption && (
+            <p className="mt-1.5 text-center text-[12.5px] text-subtle">{card.caption}</p>
+          )}
+        </div>
+        {card.play && (
+          <button
+            onClick={() =>
+              void unlockAudio().then(() => playSequence([indexToMidi(card.index)], 0, 1.1, 0.26))
+            }
+            className="mx-auto block text-[13px] text-subtle transition hover:text-ink"
+          >
+            Play it again
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (card.kind === 'rhythm') {
+    return (
+      <div className="space-y-4">
+        <p className="text-[16px] leading-relaxed text-muted">{rich(card.body)}</p>
+        <div className="rounded-2xl border border-line bg-surface px-2 py-4">
+          <RhythmStaff pattern={patternFrom(card.beats, card.beatsPerBar, card.bars)} />
+          {card.caption && (
+            <p className="mt-2 text-center text-[12.5px] text-subtle">{card.caption}</p>
+          )}
+        </div>
+        <button
+          onClick={() => void unlockAudio().then(() => playRhythm(card.beats, card.bpm ?? 84))}
+          className="mx-auto block text-[13px] text-subtle transition hover:text-ink"
+        >
+          Hear it again
+        </button>
+      </div>
+    );
+  }
+
   if (card.kind === 'circle') {
     return (
       <div className="space-y-4">
@@ -203,6 +263,38 @@ function CardBody({
       )}
     </div>
   );
+}
+
+/**
+ * Turn a lesson's plain list of lengths into a pattern the rhythm notation
+ * can draw. Negative means a rest of that length, which keeps the lesson
+ * content readable as data rather than as a nested object per note.
+ */
+function patternFrom(beats: number[], beatsPerBar = 4, bars?: number): RhythmPattern {
+  let at = 0;
+  const events = beats.map((value) => {
+    const event = { start: at, duration: Math.abs(value), rest: value < 0 };
+    at += Math.abs(value);
+    return event;
+  });
+  return { beatsPerBar, bars: bars ?? Math.max(1, Math.round(at / beatsPerBar)), events };
+}
+
+/**
+ * Sound a lesson rhythm on one repeated note.
+ *
+ * A pitch would invite reading it as a melody, which is the one thing these
+ * cards are not about — the whole point is that shape means duration.
+ */
+function playRhythm(beats: number[], bpm: number): void {
+  const msPerBeat = 60000 / bpm;
+  let at = 0;
+  for (const value of beats) {
+    if (value > 0) {
+      playNote(60, 0.12 + (at * msPerBeat) / 1000, Math.min(0.9, value * (msPerBeat / 1000) * 0.85), 0.24);
+    }
+    at += Math.abs(value);
+  }
 }
 
 /** Minimal **bold** support, so lesson copy can emphasise without markdown. */

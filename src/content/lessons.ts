@@ -28,6 +28,34 @@ export type Card =
    * and the app rotates keys through it anyway.
    */
   | { kind: 'circle'; body: string; caption?: string }
+  /**
+   * A note on a stave. The reading course has drilled this for a while with
+   * no lesson anywhere explaining what the five lines *are* — the same gap
+   * the progressions lesson closed for roman numerals.
+   */
+  | {
+      kind: 'staff';
+      body: string;
+      /** Diatonic index — see core/reading.ts. */
+      index: number;
+      clef: 'treble' | 'bass';
+      /** Sound it when the card opens. */
+      play?: boolean;
+      caption?: string;
+    }
+  /** A written rhythm, reusing the notation the rhythm course reads from. */
+  | {
+      kind: 'rhythm';
+      body: string;
+      /** Note values in beats, negative for a rest of that length. */
+      beats: number[];
+      /** Beats per bar. 4 unless the card is about another time signature. */
+      beatsPerBar?: number;
+      bars?: number;
+      /** Tap it out at this tempo when the card opens. */
+      bpm?: number;
+      caption?: string;
+    }
   | {
       kind: 'question';
       prompt: string;
@@ -214,6 +242,324 @@ export const LESSONS: Lesson[] = [
   },
 
   {
+    id: 'staff',
+    title: 'Five lines and four spaces',
+    blurb: 'What the stave actually is, and why there are two of them.',
+    minutes: 4,
+    nextUp: 'Read the Note — naming these by sight until it stops being work.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'Written music is a graph. **Time runs left to right; pitch runs bottom to top.** That is the entire idea, and everything else is notation for it.',
+      },
+      {
+        kind: 'staff',
+        body: 'The **stave** is five lines and the four spaces between them. A note sits either *on* a line or *in* a space — each one is the next letter up.',
+        index: 34,
+        clef: 'treble',
+        play: true,
+        caption: 'A note sitting in a space.',
+      },
+      {
+        kind: 'question',
+        prompt: 'A note moves from a line to the space directly above it. What happened?',
+        options: [
+          'It went up one letter',
+          'It went up two letters',
+          'It got louder',
+        ],
+        answer: 0,
+        because:
+          'Lines and spaces alternate, and each step is the next letter. Line, space, line, space — C, D, E, F — with no gaps and nothing skipped.',
+      },
+      {
+        kind: 'text',
+        body: 'Five lines only reach nine notes, which is nowhere near enough. So the stave does not have a fixed pitch — a **clef** at the front declares one, and everything else is counted from it.',
+      },
+      {
+        kind: 'staff',
+        body: 'The **treble clef** curls around the line that is G. That curl is not decoration; the centre of the spiral is telling you which line it means.',
+        index: 32,
+        clef: 'treble',
+        play: true,
+        caption: 'G, wrapped by the clef.',
+      },
+      {
+        kind: 'staff',
+        body: 'The **bass clef** does the same job with two dots, and they sit either side of the line that is F. Lower instruments and left hands live here.',
+        index: 24,
+        clef: 'bass',
+        play: true,
+        caption: 'F, between the two dots.',
+      },
+      {
+        kind: 'question',
+        prompt: 'Why does music need clefs at all?',
+        options: [
+          'To show how loud to play',
+          'Because five lines cannot cover the range of every instrument',
+          'To mark where the piece begins',
+        ],
+        answer: 1,
+        because:
+          'Five lines reach about nine notes. A clef re-points the stave at a different part of the range, which is how the same five lines serve a piccolo and a double bass.',
+      },
+      {
+        kind: 'staff',
+        body: 'A note past the end of the stave gets its own short **ledger line**. Middle C is the famous one: one ledger line below the treble stave, and one above the bass.',
+        index: 28,
+        clef: 'treble',
+        play: true,
+        caption: 'Middle C, hanging below the treble stave.',
+      },
+      {
+        kind: 'text',
+        body: 'When you start naming these, do not count up from the bottom line. Find the nearest **landmark** you already know — the clef tells you one for free — and read one or two steps from it. Counting is a habit you would only have to unlearn.',
+      },
+    ],
+  },
+
+  {
+    id: 'note-values',
+    title: 'How long is a note?',
+    blurb: 'Why notes are hollow or filled, and what the tails mean.',
+    minutes: 4,
+    nextUp: 'Read the Rhythm — tapping these in time.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'A notehead says *which* note. Its **shape** says how long to hold it. There are only four shapes worth knowing at first, and each one is half the length of the one before.',
+      },
+      {
+        kind: 'rhythm',
+        body: 'A **whole note** is hollow with no stem, and lasts four beats — a whole bar of the most common time signature.',
+        beats: [4],
+        bpm: 84,
+        caption: 'One note, four beats.',
+      },
+      {
+        kind: 'rhythm',
+        body: 'A **half note** is hollow with a stem: two beats. Two of them fill the same bar.',
+        beats: [2, 2],
+        bpm: 84,
+        caption: 'Two beats each.',
+      },
+      {
+        kind: 'rhythm',
+        body: 'A **quarter note** is filled in, with a stem: one beat. This is the note you tap your foot to.',
+        beats: [1, 1, 1, 1],
+        bpm: 84,
+        caption: 'One beat each — the pulse itself.',
+      },
+      {
+        kind: 'question',
+        prompt: 'Which note is filled in rather than hollow?',
+        options: ['The whole note', 'The half note', 'The quarter note'],
+        answer: 2,
+        because:
+          'Filling the head in halves the length. Hollow with no stem is four beats, hollow with a stem is two, filled with a stem is one — the shape is doing the arithmetic for you.',
+      },
+      {
+        kind: 'rhythm',
+        body: 'An **eighth note** adds a tail. Two fit in a beat, and when they are neighbours the tails join into a **beam** — which is there purely so you can see the beats at a glance.',
+        beats: [0.5, 0.5, 0.5, 0.5, 1, 1],
+        bpm: 84,
+        caption: 'Beamed in pairs, so the beat stays visible.',
+      },
+      {
+        kind: 'question',
+        prompt: 'How many eighth notes fit in a half note?',
+        options: ['Two', 'Three', 'Four', 'Eight'],
+        answer: 2,
+        because:
+          'Four. A half note is two beats, and each beat holds two eighths. Every step down the list halves the length, so the arithmetic is always powers of two.',
+      },
+      {
+        kind: 'rhythm',
+        body: 'Silence is written too. A **rest** has a shape for each length, and it is counted exactly like a note — it is a held nothing, not a gap in the music.',
+        beats: [1, -1, 1, 1],
+        bpm: 84,
+        caption: 'A quarter rest on beat two.',
+      },
+      {
+        kind: 'text',
+        body: 'This is the part people get wrong when they start: **rests are counted, not waited out.** Keep the pulse running underneath and the silence looks after itself. Trying to feel a gap as a gap is what makes rests hard.',
+      },
+    ],
+  },
+
+  {
+    id: 'meter',
+    title: 'What the two numbers mean',
+    blurb: 'Time signatures, and why some music feels like 1-2-3.',
+    minutes: 3,
+    nextUp: 'Read the Rhythm — everything here, tapped.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'The two stacked numbers at the front of a piece are the **time signature**. The top one counts beats in a bar. The bottom one says which note value gets one beat — 4 means a quarter note.',
+      },
+      {
+        kind: 'rhythm',
+        body: '**4/4** is four quarter-note beats to a bar, and it is so common it is also called *common time*. The first beat of each bar is the strong one.',
+        beats: [1, 1, 1, 1],
+        bars: 1,
+        bpm: 88,
+        caption: 'Four beats. Count 1-2-3-4.',
+      },
+      {
+        kind: 'rhythm',
+        body: '**3/4** is three. That single missing beat is the whole difference between a rock song and a waltz — nothing else has changed.',
+        beats: [1, 1, 1],
+        beatsPerBar: 3,
+        bars: 1,
+        bpm: 88,
+        caption: 'Three beats. Count 1-2-3, 1-2-3.',
+      },
+      {
+        kind: 'question',
+        prompt: 'In 3/4, what does the 4 tell you?',
+        options: [
+          'There are four bars',
+          'A quarter note gets one beat',
+          'The piece is in four sharps',
+        ],
+        answer: 1,
+        because:
+          'It names the beat. The top number counts them, the bottom number says what kind — so 3/4 is three quarter-note beats, and 3/8 would be three eighth-note beats.',
+      },
+      {
+        kind: 'text',
+        body: 'The **bar lines** are not decoration either: they mark where the strong beat lands. Once you feel where beat one is, reading rhythm stops being arithmetic and becomes a shape you recognise.',
+      },
+    ],
+  },
+
+  {
+    id: 'cadences',
+    title: 'How a phrase ends',
+    blurb: 'The two or three chords that make music sound finished — or not.',
+    minutes: 4,
+    nextUp: 'Progressions — hearing these arrive at the end of a phrase.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'A **cadence** is how a phrase lands. It is usually the last two chords, and it does the same job as punctuation: it tells you whether that was a full stop, a comma, or a surprise.',
+      },
+      {
+        kind: 'keys',
+        body: 'The **full stop**: V then I. The tense chord resolves to home, and it sounds completely finished. Almost every piece of tonal music ends this way.',
+        highlight: [67, 71, 74, 60, 64, 67],
+        play: [67, 71, 74],
+        together: true,
+        caption: 'V into I — hear it land.',
+      },
+      {
+        kind: 'keys',
+        body: 'The **comma**: a phrase that stops *on* V instead of moving off it. Nothing has resolved, so the music sounds like it is waiting — which is exactly what a question mark does.',
+        highlight: [67, 71, 74],
+        play: [67, 71, 74],
+        together: true,
+        caption: 'Ending on V. It hangs.',
+      },
+      {
+        kind: 'keys',
+        body: 'The **surprise**: V then vi. Everything sets up a landing on home, and then the sad chord arrives instead. Songwriters use this exactly where you expect the end and do not get it.',
+        highlight: [69, 72, 76],
+        play: [69, 72, 76],
+        together: true,
+        caption: 'vi where I was expected.',
+      },
+      {
+        kind: 'question',
+        prompt: 'A phrase stops on V and sounds unfinished. What is that?',
+        options: [
+          'A full stop — the piece has ended',
+          'A comma — the phrase is waiting for an answer',
+          'A mistake',
+        ],
+        answer: 1,
+        because:
+          'It is a half cadence. Stopping on the tense chord is a deliberate device: it makes the next phrase feel like a reply, which is how question-and-answer melodies are built.',
+      },
+      {
+        kind: 'text',
+        body: 'This is worth knowing because cadences are where chord progressions are *easiest* to hear. The end of a phrase is the most predictable moment in music — start listening there and work backwards.',
+      },
+    ],
+  },
+
+  {
+    id: 'sevenths',
+    title: 'Adding a fourth note',
+    blurb: 'What a seventh does to a chord, and why one of them pulls so hard.',
+    minutes: 4,
+    nextUp: 'Chords — telling the four sevenths apart by ear.',
+    cards: [
+      {
+        kind: 'text',
+        body: 'Stack one more third on top of a triad and you get a **seventh chord** — four notes instead of three. The extra note is a seventh above the root, which is where the name comes from.',
+      },
+      {
+        kind: 'keys',
+        body: 'A plain major triad: settled, and going nowhere in particular.',
+        highlight: [60, 64, 67],
+        play: [60, 64, 67],
+        together: true,
+        caption: 'C major.',
+      },
+      {
+        kind: 'keys',
+        body: 'Add the note a **minor** seventh above the root and you get a **dominant seventh**. Something has changed: it no longer sounds settled, it sounds like it is leaning somewhere.',
+        highlight: [60, 64, 67, 70],
+        play: [60, 64, 67, 70],
+        together: true,
+        caption: 'C7 — the same chord, now restless.',
+      },
+      {
+        kind: 'text',
+        body: 'The lean is real, not poetic. The chord now contains a **tritone** — the most unstable interval there is — between its third and its seventh, and both of those notes want to move by a half step. That is why V7 pulls home harder than V alone.',
+      },
+      {
+        kind: 'question',
+        prompt: 'What did adding the seventh change?',
+        options: [
+          'The chord got louder',
+          'The chord stopped sounding settled and started leaning',
+          'The chord changed from major to minor',
+        ],
+        answer: 1,
+        because:
+          'The root, third and fifth are all still there, so it is still a major chord — but it no longer sounds like an ending. That restlessness is the whole reason sevenths exist.',
+      },
+      {
+        kind: 'keys',
+        body: 'Add a **major** seventh instead and the effect is completely different: lush and floating rather than tense. This is the sound of a jazz ballad, not a blues turnaround.',
+        highlight: [60, 64, 67, 71],
+        play: [60, 64, 67, 71],
+        together: true,
+        caption: 'Cmaj7 — soft, not pulling.',
+      },
+      {
+        kind: 'question',
+        prompt: 'Why does a dominant seventh sound like it wants to move?',
+        options: [
+          'It is played louder',
+          'It contains a tritone, and both notes of it want to resolve by a half step',
+          'It has four notes instead of three',
+        ],
+        answer: 1,
+        because:
+          'The tritone between the third and the seventh. Four notes on their own change nothing — a major seventh has four too and sounds relaxed. It is the interval inside that does the work.',
+      },
+      {
+        kind: 'text',
+        body: 'When you meet these by ear, listen for the **rub**. A triad is clean. A seventh has a note in it grinding gently against another, and which kind it is depends on whether the chord feels tense or lush.',
+      },
+    ],
+  },
+
+  {
     id: 'intervals',
     title: 'Distance is the whole idea',
     blurb: 'What an interval is, why it has two names, and why width comes before colour.',
@@ -237,6 +583,18 @@ export const LESSONS: Lesson[] = [
         highlight: [65, 72],
         play: [65, 72],
         caption: 'F up to C. Still a fifth.',
+      },
+      {
+        kind: 'question',
+        prompt: 'The second example started on a different note. What stayed the same?',
+        options: [
+          'The two notes',
+          'The distance between them',
+          'Nothing — it was a different interval',
+        ],
+        answer: 1,
+        because:
+          'The distance, which is the entire definition. Both were seven half steps, so both are fifths — an interval has no key and no home, only a width.',
       },
       {
         kind: 'text',
@@ -469,4 +827,47 @@ export const LESSONS: Lesson[] = [
 
 export function getLesson(id: string): Lesson | undefined {
   return LESSONS.find((l) => l.id === id);
+}
+
+/**
+ * The lesson behind a drill — the other half of the linkage rule.
+ *
+ * Lessons have always pointed forward at the drill that uses them. Pointing
+ * back was the missing direction (docs/02-FEATURES.md §3.3): someone stuck on
+ * roman numerals inside Progressions had no way to reach the explanation
+ * except by leaving, finding the theory course, and reading past everything
+ * ahead of it. That is the difference between theory and trivia.
+ *
+ * Keyed on the kind of question rather than the course, because a course can
+ * change what it asks as it climbs — Chords starts on triads and ends on
+ * inversions, and those are different explanations.
+ */
+export function conceptFor(kind: string, levelId = 1): string | null {
+  switch (kind) {
+    case 'read-note':
+      return 'staff';
+    case 'tap-rhythm':
+      // The first levels are about note lengths; the later ones are about
+      // where the bar line falls.
+      return levelId >= 5 ? 'meter' : 'note-values';
+    case 'interval-id':
+      return 'intervals';
+    case 'chord-quality':
+      return levelId >= 3 ? 'sevenths' : 'triads';
+    case 'chord-inversion':
+      return 'triads';
+    case 'progression-id':
+      return levelId >= 4 ? 'cadences' : 'chords-in-key';
+    case 'home-or-not':
+    case 'rest-or-move':
+    case 'which-is-home':
+    case 'name-the-note':
+    case 'sing-home':
+    case 'sing-back':
+    case 'sing-degree':
+    case 'sing-phrase':
+      return 'home';
+    default:
+      return null;
+  }
 }

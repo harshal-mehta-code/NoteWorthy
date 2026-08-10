@@ -37,8 +37,7 @@ export default function PracticeLibrary() {
   async function open(course: Course) {
     if (course.status !== 'ready') return;
     if (course.id === 'theory') {
-      const next = LESSONS.find((l) => !lessonsDone.includes(l.id)) ?? LESSONS[0];
-      navigate(`/learn/${next.id}`);
+      navigate('/learn');
       return;
     }
     await unlockAudio();
