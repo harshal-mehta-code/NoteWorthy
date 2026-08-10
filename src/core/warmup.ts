@@ -14,6 +14,7 @@
  */
 
 import { COURSES, statKey, type Course } from './courses';
+import { urgency, type Memory } from './retention';
 import type { LevelStats } from '@/store/useStore';
 
 export type PlanStep = { courseId: string; levelId: number };
@@ -46,8 +47,10 @@ function answeredIn(stats: Record<string, LevelStats>, courseId: string): number
 export function buildWarmup(
   progress: Record<string, number>,
   stats: Record<string, LevelStats>,
+  memories: Record<string, Memory> = {},
   random: () => number = Math.random,
   length = WARMUP_LENGTH,
+  now = Date.now(),
 ): PlanStep[] {
   const all = warmupCourses();
 
@@ -57,14 +60,22 @@ export function buildWarmup(
   const started = all.filter((c) => answeredIn(stats, c.id) > 0);
   const pool = started.length >= 2 ? started : all;
 
-  // Weight by weakness, with a floor so a strong course never disappears.
+  // Weight by two things that mean different things and are both needed.
+  //
+  // **Weakness** is how a course is going right now — low accuracy earns more
+  // slots. **Urgency** is how close it is to being lost, from the forgetting
+  // curve. A course you are bad at but drilled this morning is less worth a
+  // question than one you were good at in March, and accuracy alone cannot
+  // see that difference at all.
   const weights = new Map<string, number>();
   for (const course of pool) {
     const level = progress[course.id] ?? 1;
     const acc = accuracyAt(stats, course.id, level);
     // Unseen courses get a nudge so new material surfaces early; otherwise
     // 60% accuracy earns roughly double the slots of 100%.
-    weights.set(course.id, acc === null ? 1.5 : 1 + (1 - acc) * 2.5);
+    const weakness = acc === null ? 1.5 : 1 + (1 - acc) * 2.5;
+    const slipping = urgency(memories[statKey(course.id, level)], now);
+    weights.set(course.id, weakness * (0.7 + slipping * 0.9));
   }
 
   // Bound how much of the warm-up any one course can take. Left uncapped, a
@@ -88,12 +99,48 @@ export function buildWarmup(
     // a course always serves the current level, so without this the ground
     // you've already covered is never revisited.
     const reviewing = current > 1 && random() < 0.35;
-    const levelId = reviewing ? 1 + Math.floor(random() * (current - 1)) : current;
+    const levelId = reviewing ? pickReviewLevel(course.id, current, memories, random, now) : current;
 
     picks.push({ courseId: course.id, levelId });
   }
 
   return interleave(picks, random);
+}
+
+/**
+ * Which earlier level to revisit.
+ *
+ * Uniformly at random was the old behaviour and it is close to useless: most
+ * of the levels behind you are solid, so a coin flip spends the review budget
+ * on things you already have. This picks the one closest to slipping, and
+ * only falls back to random when nothing behind you has been measured yet.
+ */
+function pickReviewLevel(
+  courseId: string,
+  current: number,
+  memories: Record<string, Memory>,
+  random: () => number,
+  now: number,
+): number {
+  const earlier = Array.from({ length: current - 1 }, (_, i) => i + 1);
+  const measured = earlier.filter((id) => memories[statKey(courseId, id)]);
+  if (measured.length === 0) return 1 + Math.floor(random() * (current - 1));
+
+  const scored = measured.map((id) => ({
+    id,
+    urgency: urgency(memories[statKey(courseId, id)], now),
+  }));
+  const total = scored.reduce((sum, s) => sum + s.urgency, 0);
+  // Every measured level scoring zero means they are all either brand new or
+  // completely lapsed; a straight pick is as good as anything then.
+  if (total <= 0) return measured[Math.floor(random() * measured.length)];
+
+  let roll = random() * total;
+  for (const s of scored) {
+    roll -= s.urgency;
+    if (roll <= 0) return s.id;
+  }
+  return scored[scored.length - 1].id;
 }
 
 function weightedPick(

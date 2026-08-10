@@ -123,20 +123,11 @@ export const INTRO_HELP: Record<IntroMode, string> = {
 
 export type Stage = 'finding' | 'naming' | 'deeper' | 'voice';
 
-export const STAGES: Stage[] = ['finding', 'naming', 'deeper', 'voice'];
-
 export const STAGE_LABEL: Record<Stage, string> = {
   finding: 'Finding home',
   naming: 'Naming the notes',
   deeper: 'Going deeper',
   voice: 'Your voice',
-};
-
-export const STAGE_BLURB: Record<Stage, string> = {
-  finding: 'Learn what home sounds like, with a drone holding it under everything.',
-  naming: 'The drone comes off. Now name what you hear.',
-  deeper: 'Longer phrases, minor keys, notes from outside the key, and less and less to hold onto.',
-  voice: 'Stop picking answers and produce them. Needs a microphone; everything else works without one.',
 };
 
 export type Level = {

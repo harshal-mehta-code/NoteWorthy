@@ -124,6 +124,10 @@ export default function Welcome() {
             The drone comes off later, and only then do we start naming notes. A round is eight
             questions — well under a minute.
           </p>
+          <p className="text-subtle">
+            This is one of eight courses. Reading music, rhythm, chords, theory and singing are all
+            in there too, under Practice — but they will keep. Start here.
+          </p>
         </>
       ),
       action: <Button onClick={finish}>Start</Button>,

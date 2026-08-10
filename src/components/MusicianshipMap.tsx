@@ -8,8 +8,18 @@ import {
   mapLabel,
   type MapNode,
 } from '@/core/mapLayout';
-import { retentionLabel } from '@/core/retention';
+import { daysUntil, retentionLabel } from '@/core/retention';
 import type { Memory } from '@/core/retention';
+
+/** When this last held 90%, or when it will stop. */
+function dueLine(memory: Memory): string {
+  const days = daysUntil(memory);
+  if (days >= 1.5) return `Solid for about another ${Math.round(days)} days.`;
+  if (days >= 0) return 'Due about now.';
+  const over = Math.round(-days);
+  if (over <= 1) return 'Slipped below full strength yesterday.';
+  return `Slipped below full strength about ${over} days ago.`;
+}
 
 /**
  * The Musicianship Map.
@@ -132,6 +142,10 @@ function Node({
         />
       )}
 
+      {/* An opaque base, so the prerequisite lines behind never show through
+          a dim or empty node — which made an untouched map look scribbled on. */}
+      <circle cx={node.x} cy={node.y} r={R} fill="var(--nw-bg)" />
+
       <circle
         cx={node.x}
         cy={node.y}
@@ -219,6 +233,9 @@ function Detail({ node, onOpen }: { node: MapNode | null; onOpen: (n: MapNode) =
               : `level ${Math.max(1, Math.round(node.progress * node.course.levels.length))} of ${node.course.levels.length}`}
             {pct > 0 && ` · ${pct}% through`}
           </p>
+          {/* The forgetting curve, said as a date rather than a number.
+              "Fading" is a feeling; "slipped four days ago" is actionable. */}
+          {node.memory && <p className="mt-1 text-[12.5px] text-subtle">{dueLine(node.memory)}</p>}
           <button
             onClick={() => onOpen(node)}
             className="mt-3 w-full rounded-xl border border-accent-dim bg-accent-wash py-2.5 text-[14px] font-semibold text-accent transition hover:border-accent"

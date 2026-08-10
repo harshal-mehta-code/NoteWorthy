@@ -8,6 +8,7 @@ import {
   courseRetention,
   mapEdges,
   mostFaded,
+  suggestedNext,
 } from './mapLayout';
 import { COURSES, getCourse } from './courses';
 import type { Memory } from './retention';
@@ -194,6 +195,60 @@ describe('mostFaded', () => {
     );
     const faded = mostFaded(nodes);
     expect(faded?.started).toBe(true);
+  });
+});
+
+describe('suggestedNext', () => {
+  it('never offers more than the limit', () => {
+    expect(suggestedNext({}, 0, null)).toHaveLength(4);
+    expect(suggestedNext({}, 0, null, 2)).toHaveLength(2);
+  });
+
+  it('never offers the course already being offered above it', () => {
+    for (const c of suggestedNext({}, 0, 'find-the-note')) {
+      expect(c.id).not.toBe('find-the-note');
+    }
+  });
+
+  it('never offers a planned course, which cannot be started', () => {
+    for (const c of suggestedNext({ 'find-the-note': 9, intervals: 5 }, 9, null, 10)) {
+      expect(c.status).toBe('ready');
+    }
+  });
+
+  it('leads with courses already started', () => {
+    const out = suggestedNext({ progressions: 3 }, 0, 'find-the-note');
+    expect(out[0].id).toBe('progressions');
+  });
+
+  it('offers the courses with no prerequisites first to a brand-new user', () => {
+    // Progressions sits three courses deep; putting it on someone's first
+    // screen is what this function exists to stop.
+    const ids = suggestedNext({}, 0, 'find-the-note').map((c) => c.id);
+    expect(ids).toContain('note-reading');
+    expect(ids).toContain('theory');
+    expect(ids).not.toContain('progressions');
+  });
+
+  it('promotes a course once its prerequisite has been started', () => {
+    const before = suggestedNext({}, 0, null, 3).map((c) => c.id);
+    const after = suggestedNext({ 'chord-quality': 2 }, 0, null, 3).map((c) => c.id);
+    expect(before).not.toContain('progressions');
+    expect(after).toContain('progressions');
+  });
+
+  it('counts lessons read as having started the theory course', () => {
+    // Find the Note comes after Foundations, so reading a lesson unlocks it.
+    const cold = suggestedNext({}, 0, null, 2).map((c) => c.id);
+    const warm = suggestedNext({}, 3, null, 2).map((c) => c.id);
+    expect(cold).not.toContain('find-the-note');
+    expect(warm).toContain('find-the-note');
+  });
+
+  it('returns a stable order for the same input', () => {
+    const a = suggestedNext({ intervals: 2 }, 1, 'find-the-note');
+    const b = suggestedNext({ intervals: 2 }, 1, 'find-the-note');
+    expect(a.map((c) => c.id)).toEqual(b.map((c) => c.id));
   });
 });
 

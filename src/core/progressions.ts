@@ -130,11 +130,6 @@ export function voiceProgression(tonic: number, romans: Roman[]): number[][] {
   return out;
 }
 
-/** A bass note an octave below the chord, so the root is audible. */
-export function bassFor(tonic: number, roman: Roman): number {
-  return tonic + ROMAN[roman].root - 12;
-}
-
 function level(
   partial: Partial<Level> & Pick<Level, 'id' | 'name' | 'blurb' | 'romanSet' | 'progressionLength'>,
 ): Level {

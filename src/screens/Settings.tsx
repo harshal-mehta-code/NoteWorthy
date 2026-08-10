@@ -7,6 +7,7 @@ import type { IntroMode } from '@/core/levels';
 import { KEYS, midiToName } from '@/core/music';
 import { isUsable } from '@/core/range';
 import { useStore } from '@/store/useStore';
+import { usingSamples } from '@/audio/engine';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -114,6 +115,18 @@ export default function Settings() {
                 : 'Not measured'}
             </span>
           </button>
+        </Field>
+
+        <Field
+          label="Sound"
+          help="The samples are generated from a physical model of a string, not recorded from an instrument — see the README. The synth is the fallback and always works."
+        >
+          <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3.5">
+            <span className="text-[15px] font-semibold">Piano</span>
+            <span className="text-[14px] text-subtle">
+              {usingSamples() ? 'Sampled' : 'Synth'}
+            </span>
+          </div>
         </Field>
 
         <Field label="Appearance">

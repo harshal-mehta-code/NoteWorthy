@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildWarmup, interleave, planBreakdown, warmupCourses, WARMUP_LENGTH } from './warmup';
 import { getCourse } from './courses';
 import type { LevelStats } from '@/store/useStore';
+import type { Memory } from './retention';
 
 /** A deterministic stand-in for Math.random: cycles a fixed sequence. */
 function seeded(values: number[]): () => number {
@@ -63,13 +64,13 @@ describe('buildWarmup', () => {
   const progress = { 'find-the-note': 3, intervals: 2, 'chord-quality': 1 };
 
   it('produces exactly the requested number of steps', () => {
-    expect(buildWarmup(progress, started, lcg(7))).toHaveLength(WARMUP_LENGTH);
-    expect(buildWarmup(progress, started, lcg(7), 4)).toHaveLength(4);
+    expect(buildWarmup(progress, started, {}, lcg(7))).toHaveLength(WARMUP_LENGTH);
+    expect(buildWarmup(progress, started, {}, lcg(7), 4)).toHaveLength(4);
   });
 
   it('only draws from courses the user has started, once there are enough', () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const plan = buildWarmup(progress, started, lcg(seed));
+      const plan = buildWarmup(progress, started, {}, lcg(seed));
       for (const step of plan) {
         expect(['find-the-note', 'intervals', 'chord-quality']).toContain(step.courseId);
       }
@@ -80,6 +81,7 @@ describe('buildWarmup', () => {
     const plan = buildWarmup(
       { 'find-the-note': 2 },
       stats({ 'find-the-note:2': { right: 5, wrong: 1 } }),
+      {},
       lcg(3),
     );
     expect(new Set(plan.map((s) => s.courseId)).size).toBeGreaterThan(1);
@@ -89,7 +91,7 @@ describe('buildWarmup', () => {
     // Progress deliberately past the end, as a corrupt profile would be.
     const overrun = { 'find-the-note': 99, intervals: 99, 'chord-quality': 99 };
     for (let seed = 1; seed <= 20; seed++) {
-      for (const step of buildWarmup(overrun, started, lcg(seed))) {
+      for (const step of buildWarmup(overrun, started, {}, lcg(seed))) {
         const course = getCourse(step.courseId)!;
         expect(step.levelId).toBeGreaterThanOrEqual(1);
         expect(step.levelId).toBeLessThanOrEqual(course.levels.length);
@@ -99,7 +101,7 @@ describe('buildWarmup', () => {
 
   it('never lets the same course land three times in a row', () => {
     for (let seed = 1; seed <= 50; seed++) {
-      const plan = buildWarmup(progress, started, lcg(seed));
+      const plan = buildWarmup(progress, started, {}, lcg(seed));
       for (let i = 2; i < plan.length; i++) {
         const run = plan[i].courseId === plan[i - 1].courseId && plan[i].courseId === plan[i - 2].courseId;
         expect(run, `run of three at ${i} with seed ${seed}`).toBe(false);
@@ -109,7 +111,7 @@ describe('buildWarmup', () => {
 
   it('keeps adjacent repeats down to at most one per warm-up', () => {
     for (let seed = 1; seed <= 50; seed++) {
-      const plan = buildWarmup(progress, started, lcg(seed));
+      const plan = buildWarmup(progress, started, {}, lcg(seed));
       let adjacent = 0;
       for (let i = 1; i < plan.length; i++) {
         if (plan[i].courseId === plan[i - 1].courseId) adjacent++;
@@ -120,7 +122,7 @@ describe('buildWarmup', () => {
 
   it('never hands one course more than 60% of the questions', () => {
     for (let seed = 1; seed <= 50; seed++) {
-      for (const { count } of planBreakdown(buildWarmup(progress, started, lcg(seed)))) {
+      for (const { count } of planBreakdown(buildWarmup(progress, started, {}, lcg(seed)))) {
         expect(count).toBeLessThanOrEqual(Math.ceil(WARMUP_LENGTH * 0.6));
       }
     }
@@ -132,7 +134,7 @@ describe('buildWarmup', () => {
     let review = 0;
     let total = 0;
     for (let seed = 1; seed <= 60; seed++) {
-      for (const step of buildWarmup(deep, started, lcg(seed))) {
+      for (const step of buildWarmup(deep, started, {}, lcg(seed))) {
         total++;
         if (step.levelId < 5) review++;
       }
@@ -145,7 +147,7 @@ describe('buildWarmup', () => {
   it('never reviews below level 1, and never above the current level', () => {
     const deep = { 'find-the-note': 4, intervals: 4, 'chord-quality': 4 };
     for (let seed = 1; seed <= 30; seed++) {
-      for (const step of buildWarmup(deep, started, lcg(seed))) {
+      for (const step of buildWarmup(deep, started, {}, lcg(seed))) {
         expect(step.levelId).toBeGreaterThanOrEqual(1);
         expect(step.levelId).toBeLessThanOrEqual(4);
       }
@@ -154,7 +156,7 @@ describe('buildWarmup', () => {
 
   it('stays on level 1 when there is nothing below it', () => {
     const fresh = { 'find-the-note': 1, intervals: 1, 'chord-quality': 1 };
-    for (const step of buildWarmup(fresh, started, lcg(11))) {
+    for (const step of buildWarmup(fresh, started, {}, lcg(11))) {
       expect(step.levelId).toBe(1);
     }
   });
@@ -169,7 +171,7 @@ describe('buildWarmup', () => {
     let weak = 0;
     let strong = 0;
     for (let seed = 1; seed <= 80; seed++) {
-      for (const step of buildWarmup(flat, lopsided, lcg(seed))) {
+      for (const step of buildWarmup(flat, lopsided, {}, lcg(seed))) {
         if (step.courseId === 'find-the-note') weak++;
         if (step.courseId === 'intervals') strong++;
       }
@@ -190,7 +192,7 @@ describe('buildWarmup', () => {
     let thinCount = 0;
     let evenCount = 0;
     for (let seed = 1; seed <= 80; seed++) {
-      for (const step of buildWarmup({ 'find-the-note': 1, intervals: 1 }, thin, lcg(seed))) {
+      for (const step of buildWarmup({ 'find-the-note': 1, intervals: 1 }, thin, {}, lcg(seed))) {
         if (step.courseId === 'find-the-note') thinCount++;
         if (step.courseId === 'intervals') evenCount++;
       }
@@ -200,9 +202,124 @@ describe('buildWarmup', () => {
   });
 
   it('works with an empty profile', () => {
-    const plan = buildWarmup({}, {}, lcg(5));
+    const plan = buildWarmup({}, {}, {}, lcg(5));
     expect(plan).toHaveLength(WARMUP_LENGTH);
     for (const step of plan) expect(step.levelId).toBe(1);
+  });
+});
+
+describe('scheduling from what is fading', () => {
+  const DAY = 86_400_000;
+  const T0 = Date.UTC(2026, 0, 1);
+  const at = (days: number) => T0 + days * DAY;
+  const mem = (lastAt: number, stability: number): Memory => ({
+    lastAt,
+    stability,
+    difficulty: 5,
+    reviews: 4,
+  });
+
+  const even = stats({
+    'find-the-note:1': { right: 8, wrong: 4 },
+    'intervals:1': { right: 8, wrong: 4 },
+  });
+  const flat = { 'find-the-note': 1, intervals: 1 };
+
+  it('favours the slipping course over the equally weak but fresh one', () => {
+    // Identical accuracy. The only difference is that one was drilled this
+    // morning and the other is halfway to gone — which accuracy cannot see.
+    const memories = {
+      'find-the-note:1': mem(at(29), 10), // slipping
+      'intervals:1': mem(at(30), 40), // drilled recently, solid
+    };
+
+    let slipping = 0;
+    let fresh = 0;
+    for (let seed = 1; seed <= 80; seed++) {
+      for (const step of buildWarmup(flat, even, memories, lcg(seed), 10, at(30))) {
+        if (step.courseId === 'find-the-note') slipping++;
+        if (step.courseId === 'intervals') fresh++;
+      }
+    }
+    expect(slipping).toBeGreaterThan(fresh);
+  });
+
+  it('still gives the fresh course a real share, rather than starving it', () => {
+    const memories = {
+      'find-the-note:1': mem(at(29), 10),
+      'intervals:1': mem(at(30), 40),
+    };
+    let fresh = 0;
+    let total = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      for (const step of buildWarmup(flat, even, memories, lcg(seed), 10, at(30))) {
+        total++;
+        if (step.courseId === 'intervals') fresh++;
+      }
+    }
+    expect(fresh / total).toBeGreaterThan(0.2);
+  });
+
+  it('behaves exactly as before when nothing has been measured', () => {
+    const withMemories = buildWarmup(flat, even, {}, lcg(5), 10, at(30));
+    const withoutArg = buildWarmup(flat, even, {}, lcg(5), 10, at(30));
+    expect(withMemories).toEqual(withoutArg);
+  });
+
+  it('reviews the earlier level closest to slipping, not a random one', () => {
+    // Levels 1-4 behind you: 2 is nearly gone, the rest are solid.
+    const deep = { 'find-the-note': 5 };
+    const memories = {
+      'find-the-note:1': mem(at(60), 200),
+      'find-the-note:2': mem(at(20), 2),
+      'find-the-note:3': mem(at(60), 200),
+      'find-the-note:4': mem(at(60), 200),
+      'find-the-note:5': mem(at(60), 30),
+    };
+
+    const counts = new Map<number, number>();
+    for (let seed = 1; seed <= 120; seed++) {
+      for (const step of buildWarmup(deep, even, memories, lcg(seed), 10, at(60))) {
+        // Only this course's reach-backs. Other courses sit at level 1, and
+        // counting those as reviews of level 1 would swamp the signal.
+        if (step.courseId === 'find-the-note' && step.levelId < 5) {
+          counts.set(step.levelId, (counts.get(step.levelId) ?? 0) + 1);
+        }
+      }
+    }
+    const shaky = counts.get(2) ?? 0;
+    const reviews = [...counts.values()].reduce((a, b) => a + b, 0);
+    // Uniform would be a quarter. Weighting by urgency should put it well
+    // clear of that, and ahead of any individual solid level.
+    expect(shaky / reviews).toBeGreaterThan(0.35);
+    for (const level of [1, 3, 4]) expect(shaky).toBeGreaterThan(counts.get(level) ?? 0);
+  });
+
+  it('falls back to a plain random reach-back when nothing behind is measured', () => {
+    const deep = { 'find-the-note': 5 };
+    const seen = new Set<number>();
+    for (let seed = 1; seed <= 60; seed++) {
+      for (const step of buildWarmup(deep, even, {}, lcg(seed), 10, at(60))) {
+        if (step.levelId < 5) seen.add(step.levelId);
+      }
+    }
+    // All four earlier levels should turn up across enough draws.
+    expect(seen.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('never picks a review level at or above the current one', () => {
+    const deep = { 'find-the-note': 4, intervals: 4 };
+    const memories = {
+      'find-the-note:1': mem(at(50), 3),
+      'find-the-note:2': mem(at(50), 3),
+      'intervals:3': mem(at(50), 3),
+    };
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const step of buildWarmup(deep, even, memories, lcg(seed), 10, at(50))) {
+        expect(step.levelId).toBeGreaterThanOrEqual(1);
+        expect(step.levelId).toBeLessThanOrEqual(4);
+      }
+    }
   });
 });
 
@@ -265,7 +382,7 @@ describe('planBreakdown', () => {
   });
 
   it('totals back to the plan length', () => {
-    const plan = buildWarmup({ 'find-the-note': 2, intervals: 2 }, {}, lcg(9));
+    const plan = buildWarmup({ 'find-the-note': 2, intervals: 2 }, {}, {}, lcg(9));
     const total = planBreakdown(plan).reduce((sum, r) => sum + r.count, 0);
     expect(total).toBe(plan.length);
   });

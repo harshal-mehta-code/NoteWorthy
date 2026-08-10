@@ -303,12 +303,11 @@ Full keyboard operation for every drill, screen-reader announcements, color-blin
 
 **And since that** — Read the Rhythm (nine levels, tapped, with latency cancelled by measurement rather than a calibration wizard).
 
-**And since that** — response time as a second signal, a forgetting-curve retention model, and the Musicianship Map.
+**And since that** — response time as a second signal, a forgetting-curve retention model, the Musicianship Map, and warm-up scheduling driven by that model rather than by accuracy alone.
 
 **Next, in order** — each is a self-contained increment small enough to review in one sitting:
 
-1. **Scheduling from the model.** The retention model exists and the map reads from it, but the warm-up still picks by weakness rather than by what is actually due. `urgency()` is already written and tested; wiring it into `buildWarmup` is the remaining step.
-2. **Melodic dictation** — hear a phrase, write it down. The listening counterpart to Sing a Phrase, which already generates and grades phrases.
+1. **Melodic dictation** — hear a phrase, write it down. The listening counterpart to Sing a Phrase, which already generates and grades phrases.
 5. **Scroll reading** with the lookahead veil — the last big piece of the reading pillar, and the one the prototype still owns.
 
 **Deliberately not next:** XP and achievements. The gamification that pays here is musical (feedback that resolves to the tonic, streaks that climb the scale) and it is already in. A points layer on top would be the generic version of something the app does better.

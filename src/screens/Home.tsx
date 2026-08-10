@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button, Card, Label, Screen } from '@/components/ui';
-import { COURSES, getCourse, statKey, PILLAR_LABEL, READY_COURSES } from '@/core/courses';
+import { COURSES, getCourse, statKey, PILLAR_LABEL } from '@/core/courses';
+import { suggestedNext } from '@/core/mapLayout';
 import { findLevel } from '@/core/levels';
 import { LESSONS } from '@/content/lessons';
 import { courseAnswers, levelFor, recentAccuracy, useStore } from '@/store/useStore';
@@ -44,7 +45,10 @@ export default function Home() {
   const touched = warmupCourses().filter((c) => courseAnswers(stats, c.id) > 0);
   const warmupReady = touched.length >= 2;
 
-  const others = READY_COURSES.filter((c) => c.id !== course.id);
+  // A short list, not the whole library — that's what the Practice tab is
+  // for, and eight names under one big button is the wall of options this
+  // screen was redesigned to get rid of.
+  const others = suggestedNext(progress, lessonsDone.length, course.id);
 
   return (
     <Screen className="pad-top">
@@ -111,7 +115,15 @@ export default function Home() {
       </div>
 
       <div className="pb-6">
-        <Label className="mb-2.5">Or something else</Label>
+        <div className="mb-2.5 flex items-baseline justify-between gap-3">
+          <Label>Or something else</Label>
+          <button
+            onClick={() => navigate('/practice')}
+            className="label shrink-0 text-subtle transition hover:text-ink"
+          >
+            See all
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           {others.map((c) => (
             <button

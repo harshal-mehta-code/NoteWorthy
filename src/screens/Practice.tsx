@@ -60,6 +60,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
   const labelStyle = useStore((s) => s.labelStyle);
   const introOverride = useStore((s) => s.introOverride);
   const allDegreeStats = useStore((s) => s.degreeStats);
+  const allMemories = useStore((s) => s.memories);
   const vocalRange = useStore((s) => s.vocalRange);
   const tapOffsetMs = useStore((s) => s.tapOffsetMs);
   const learnTapOffset = useStore((s) => s.learnTapOffset);
@@ -74,7 +75,7 @@ export default function Practice({ warmup = false }: { warmup?: boolean } = {}) 
    * for free, and there is only one place where a question is asked.
    */
   const plan = useMemo<PlanStep[]>(() => {
-    if (warmup) return buildWarmup(progress, allStats);
+    if (warmup) return buildWarmup(progress, allStats, allMemories);
     const c = getCourse(params.courseId ?? 'find-the-note') ?? COURSES[0];
     const levelId = levelFor(progress, c.id);
     const rounds = findLevel(c.levels, levelId).roundLength;

@@ -81,6 +81,18 @@ export default function You() {
           )}
         </div>
 
+        {/* Above the empty stats rather than below them: it exists to explain
+            the emptiness, and an explanation that comes after four blank rows
+            has already failed. */}
+        {totalAnswers === 0 && (
+          <Card tone="accent">
+            <p className="text-[15px] leading-relaxed">
+              Nothing here yet. Everything on this screen fills in as you practise — there's no
+              setup and nothing to configure first.
+            </p>
+          </Card>
+        )}
+
         <Card>
           <div className="flex">
             <Stat value={String(streakDays)} label="day streak" />
@@ -104,14 +116,6 @@ export default function You() {
           </div>
         </div>
 
-        {totalAnswers === 0 && (
-          <Card tone="accent">
-            <p className="text-[15px] leading-relaxed">
-              Nothing here yet. Everything on this screen fills in as you practise — there's no
-              setup and nothing to configure first.
-            </p>
-          </Card>
-        )}
 
         <p className="pb-4 text-[13px] leading-relaxed text-subtle">
           All of this lives on this device only. No account, and nothing leaves your browser.

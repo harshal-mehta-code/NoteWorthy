@@ -84,7 +84,7 @@ The stability update is deliberately *not* full FSRS — that fits seventeen wei
 Three node states, because they mean three different things: never touched is an outline, started-but-unmeasurable (lessons don't decay in any way the app can honestly measure) sits at a fixed middle, and everything drilled is lit by what survives.
 
 ### 🔁 The Daily Warm-Up
-Ten questions assembled fresh from every course you've started, weighted toward the ones you're weakest at, with roughly a third reaching back below your current level. It exists because practising a course always serves its current level, so everything under it quietly rots — and because **interleaving** beats grinding one drill at a time for retention, even though it reliably feels worse while you're doing it. No single course can take more than 60% of the round, so the same drill never lands three times running.
+Ten questions assembled fresh from every course you've started, weighted by two things that mean different things: how **weak** a course is right now, and how close it is to being **lost** according to the retention model. A course you're bad at but drilled this morning is worth less than one you were good at in March, and accuracy alone cannot see that difference. Roughly a third of questions reach back below your current level, and they land on the level closest to slipping rather than a random one. It exists because practising a course always serves its current level, so everything under it quietly rots — and because **interleaving** beats grinding one drill at a time for retention, even though it reliably feels worse while you're doing it. No single course can take more than 60% of the round, so the same drill never lands three times running.
 
 ---
 
@@ -99,7 +99,7 @@ Ten questions assembled fresh from every course you've started, weighted toward 
 - Local-first: no account, nothing leaves the browser — and **backup to a file**, because the flip side of that promise is that clearing site data would otherwise take months of practice with it. Restore validates the file field by field, so picking the wrong one in a file dialog says what was wrong instead of corrupting your progress.
 - Installable PWA, works offline
 
-Deliberately **not** built yet: XP, achievements, and scheduling driven by the retention model (the model and the map read from it; the warm-up still picks by weakness). Four more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
+Deliberately **not** built yet: XP and achievements. The gamification that works here is musical — feedback resolving to the tonic, streaks climbing the scale — and that is already in; a points layer would be the generic version of something the app does better. Four more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
 
 ## Documentation
 

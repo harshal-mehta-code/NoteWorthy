@@ -123,13 +123,6 @@ export function degreeNickname(deg: Deg, mode: Mode): string {
   return NICKNAME[mode][deg] ?? '';
 }
 
-/** Both labels, in the user's preferred order. */
-export function degreeFull(deg: Deg, mode: Mode, style: 'numbers' | 'solfege'): string {
-  return style === 'numbers'
-    ? `${degreeLabel(deg, mode)} · ${degreeSolfege(deg)}`
-    : `${degreeSolfege(deg)} · ${degreeLabel(deg, mode)}`;
-}
-
 export type KeyChoice = { name: string; tonic: number };
 
 /** A small set of comfortable keys. C is the default: no sharps, no flats. */

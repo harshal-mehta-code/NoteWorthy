@@ -114,10 +114,4 @@ export function Staff({
   );
 }
 
-/** Where middle C sits in each clef, for the help sheet. */
-export const MIDDLE_C_HINT: Record<Clef, string> = {
-  treble: 'Middle C sits on the first ledger line below the treble stave.',
-  bass: 'Middle C sits on the first ledger line above the bass stave.',
-};
-
 export { BOTTOM_LINE };

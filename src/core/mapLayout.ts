@@ -10,7 +10,7 @@
  * this week; the whole value of a map is that it stays put.
  */
 
-import { COURSES, type Course, type CourseId, type Pillar } from './courses';
+import { COURSES, type Course, type CourseId } from './courses';
 import { retrievability, type Memory } from './retention';
 
 export type MapNode = {
@@ -21,6 +21,8 @@ export type MapNode = {
   progress: number;
   /** 0-1, or null when never touched. How much of it you still have. */
   retention: number | null;
+  /** The memory behind that figure, for anything wanting the dates. */
+  memory: Memory | null;
   started: boolean;
 };
 
@@ -56,7 +58,7 @@ const POSITIONS: Record<CourseId, { x: number; y: number }> = {
  * without colliding with its neighbour, and a couple are long enough that
  * they would.
  */
-export const MAP_LABEL: Partial<Record<CourseId, string>> = {
+const MAP_LABEL: Partial<Record<CourseId, string>> = {
   'rhythm-reading': 'Rhythm',
 };
 
@@ -127,6 +129,7 @@ export function buildMap(
     ...POSITIONS[course.id],
     progress: courseProgress(course, progress, lessonsDone),
     retention: courseRetention(course, progress, memories, now),
+    memory: course.lessons ? null : (memories[`${course.id}:${progress[course.id] ?? 0}`] ?? null),
     started: course.lessons
       ? lessonsDone > 0
       : (progress[course.id] ?? 0) > 0 ||
@@ -143,9 +146,38 @@ export function mostFaded(nodes: MapNode[]): MapNode | null {
   return candidates.reduce((worst, n) => (n.retention! < worst.retention! ? n : worst));
 }
 
-export const PILLAR_TINT: Record<Pillar, string> = {
-  ear: 'var(--nw-accent)',
-  reading: 'var(--nw-cool)',
-  theory: 'var(--nw-accent)',
-  voice: 'var(--nw-cool)',
-};
+/**
+ * A short list of courses to offer next, best first.
+ *
+ * Home used to show every ready course it wasn't already offering. With eight
+ * of them that is a wall of unfamiliar names on a screen whose whole job is
+ * one obvious action — and it puts Progressions in front of someone on their
+ * first day. The Practice tab exists to list everything; this picks a few.
+ *
+ * Order: what you've already started (you came back to it for a reason),
+ * then what you're ready for by the map's own prerequisite edges, then the
+ * rest. Ties break toward earlier courses, which are the easier ones.
+ */
+export function suggestedNext(
+  progress: Record<string, number>,
+  lessonsDone: number,
+  exclude: CourseId | null,
+  limit = 4,
+): Course[] {
+  const started = (id: CourseId) =>
+    id === 'theory' ? lessonsDone > 0 : (progress[id] ?? 0) > 0;
+
+  return COURSES.filter((c) => c.status === 'ready' && c.id !== exclude)
+    .map((course, i) => {
+      const ready = (course.after ?? []).every(started);
+      return {
+        course,
+        // Started beats ready-to-start beats everything else.
+        rank: started(course.id) ? 0 : ready ? 1 : 2,
+        i,
+      };
+    })
+    .sort((a, b) => a.rank - b.rank || a.i - b.i)
+    .slice(0, limit)
+    .map((entry) => entry.course);
+}

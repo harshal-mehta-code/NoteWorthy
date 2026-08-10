@@ -15,7 +15,6 @@ import { loadSamples, playSampled, samplesReady } from './sampler';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let unlocked = false;
 
 function build(): AudioContext {
   if (ctx) return ctx;
@@ -47,12 +46,7 @@ function build(): AudioContext {
 export async function unlockAudio(): Promise<void> {
   const c = build();
   if (c.state === 'suspended') await c.resume();
-  unlocked = true;
   void loadSamples(c);
-}
-
-export function isUnlocked(): boolean {
-  return unlocked && ctx !== null && ctx.state === 'running';
 }
 
 export function usingSamples(): boolean {
@@ -61,11 +55,6 @@ export function usingSamples(): boolean {
 
 export function now(): number {
   return build().currentTime;
-}
-
-export function setVolume(v: number): void {
-  build();
-  if (master) master.gain.value = Math.max(0, Math.min(1, v));
 }
 
 /** Fallback voice: two detuned oscillators through a gentle lowpass. */
