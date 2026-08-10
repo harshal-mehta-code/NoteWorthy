@@ -4,7 +4,7 @@
 
 Free, forever. Runs in the browser, installable as a PWA, works offline.
 
-**Status: v0.9 shipped.** Eight courses across all four pillars, a Daily Warm-Up that mixes them, vocal range mapping, rhythm, and backup to a file.
+**Status: v1.0 shipped.** Eight courses across all four pillars, a Daily Warm-Up that mixes them, the Musicianship Map with a real forgetting curve behind it, vocal range mapping, and backup to a file.
 
 ```bash
 npm install
@@ -28,7 +28,7 @@ npm run dev
 - **Key of the Week** — every pillar tunes to one tonal center, rotating the circle of fifths.
 - **Musical feedback** — the reward sounds are diatonic and in the current key, so the gamification layer is itself ear training.
 - **Comparative error playback** — hear what you picked vs what it was, back to back, in context.
-- **The Musicianship Map** — a skill constellation across all four pillars, where nodes visibly dim as your retention decays. Built.
+- **The Musicianship Map** — a skill constellation across all four pillars, where nodes visibly dim as your retention decays.
 - **Auto-transposition to your voice** — range mapped once, every singable exercise fits you afterward.
 - **No dark patterns** — no ads, no energy meters, no streak guilt, nothing locked.
 
@@ -99,7 +99,7 @@ Ten questions assembled fresh from every course you've started, weighted toward 
 - Local-first: no account, nothing leaves the browser — and **backup to a file**, because the flip side of that promise is that clearing site data would otherwise take months of practice with it. Restore validates the file field by field, so picking the wrong one in a file dialog says what was wrong instead of corrupting your progress.
 - Installable PWA, works offline
 
-Deliberately **not** built yet: skill map, XP, achievements, spaced repetition scheduling. Four more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
+Deliberately **not** built yet: XP, achievements, and scheduling driven by the retention model (the model and the map read from it; the warm-up still picks by weakness). Four more courses are listed as planned inside the app itself rather than hidden — see [07-UX-AND-LANGUAGE.md](docs/07-UX-AND-LANGUAGE.md) §1.
 
 ## Documentation
 
